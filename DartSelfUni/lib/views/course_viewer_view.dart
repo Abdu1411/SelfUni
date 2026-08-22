@@ -9,9 +9,11 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:youtube_transcript_api/youtube_transcript_api.dart';
 import '../widgets/common/adaptive_video_player_widget.dart';
 import '../widgets/common/markdown_view.dart';
+import '../widgets/common/pomodoro_timer_widget.dart';
 import '../../core/services/ai_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../models/deck_model.dart';
+import '../widgets/modals/select_folder_modal.dart';
 
 class CourseViewerView extends StatefulWidget {
   final Course course;
@@ -550,7 +552,10 @@ class _CourseViewerViewState extends State<CourseViewerView> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (_activeItem != null)
+                      const SizedBox(width: 16),
+                      const PomodoroTimerWidget(),
+                      if (_activeItem != null) ...[
+                        const SizedBox(width: 16),
                         ElevatedButton.icon(
                           onPressed: () async {
                             if (_activeItem != null) {
@@ -629,7 +634,26 @@ class _CourseViewerViewState extends State<CourseViewerView> {
                               }
 
                               // Now generate the flashcards directly in background!
+                              final deckProvider = context.read<DeckProvider>();
+                              String? targetFolderId;
+                              final matchingFolder = deckProvider.folders.where((f) => f.id == widget.course.id || f.name.toLowerCase() == widget.course.title.toLowerCase()).firstOrNull;
+                              if (matchingFolder != null) {
+                                targetFolderId = matchingFolder.id;
+                              } else {
+                                targetFolderId = await SelectFolderModal.show(
+                                  context,
+                                  initialFolderId: widget.course.id,
+                                  title: 'Choose Target Folder',
+                                  description: 'A destination folder is mandatory before synthesizing flashcards for "${_activeItem!.title}".',
+                                );
+                                if (targetFolderId == null) {
+                                  return; // User cancelled
+                                }
+                              }
+
                               if (!context.mounted) return;
+
+                              // Show progress dialog
                               showDialog(
                                 context: context,
                                 barrierDismissible: false,
@@ -691,7 +715,7 @@ class _CourseViewerViewState extends State<CourseViewerView> {
                                   id: DateTime.now().millisecondsSinceEpoch.toString(),
                                   title: _activeItem!.title,
                                   cards: cards,
-                                  folderId: widget.course.id,
+                                  folderId: targetFolderId,
                                 );
                                 context.read<DeckProvider>().addDeck(deck);
 
@@ -721,6 +745,7 @@ class _CourseViewerViewState extends State<CourseViewerView> {
                             textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ),
+                      ],
                     ],
                   ),
                 ),

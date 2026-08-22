@@ -10,6 +10,8 @@ import '../../providers/deck_provider.dart';
 import '../widgets/common/markdown_view.dart';
 import '../widgets/common/rich_note_editor.dart';
 import '../widgets/modals/ask_ai_modal.dart';
+import '../widgets/modals/select_folder_modal.dart';
+import '../widgets/common/pomodoro_timer_widget.dart';
 import 'study_session_view.dart';
 
 class LessonDetailView extends StatefulWidget {
@@ -109,6 +111,24 @@ class _LessonDetailViewState extends State<LessonDetailView> {
       return;
     }
 
+    final deckProvider = context.read<DeckProvider>();
+    String? targetFolderId = widget.lesson.folderId;
+    if (targetFolderId == null || targetFolderId == 'unfiled' || !deckProvider.folders.any((f) => f.id == targetFolderId)) {
+      targetFolderId = await SelectFolderModal.show(
+        context,
+        initialFolderId: widget.lesson.folderId,
+        title: 'Choose Target Folder',
+        description: 'A destination folder is mandatory before synthesizing flashcards for "${widget.lesson.title}".',
+      );
+      if (targetFolderId == null) {
+        return; // User cancelled without selecting a folder
+      }
+      if (!mounted) return;
+      widget.lesson.folderId = targetFolderId;
+      deckProvider.updateLesson(widget.lesson);
+    }
+
+    if (!mounted) return;
     setState(() => _isGeneratingCards = true);
 
     // Show Progress Dialog
@@ -178,7 +198,7 @@ class _LessonDetailViewState extends State<LessonDetailView> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: widget.lesson.title,
         cards: cards,
-        folderId: widget.lesson.folderId,
+        folderId: targetFolderId,
       );
 
       if (mounted) {
@@ -347,6 +367,8 @@ class _LessonDetailViewState extends State<LessonDetailView> {
         ),
         centerTitle: true,
         actions: [
+          const PomodoroTimerWidget(),
+          const SizedBox(width: 8),
           ElevatedButton.icon(
             onPressed: () => setState(() => _isEditing = !_isEditing),
             icon: Icon(_isEditing ? Icons.visibility : Icons.edit_note, size: 16),

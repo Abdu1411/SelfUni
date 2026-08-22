@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/deck_provider.dart';
 import '../../models/course_model.dart';
+import '../../models/card_model.dart';
 import '../../views/custom_study_view.dart';
 import '../../views/study_session_view.dart';
+import '../../providers/pomodoro_provider.dart';
 
 enum WorkspaceTab {
   dashboard,
@@ -40,6 +42,10 @@ class Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final deckProvider = context.watch<DeckProvider>();
+    final pomodoro = context.watch<PomodoroProvider>();
+    final minutes = (pomodoro.timeRemaining ~/ 60).toString().padLeft(2, '0');
+    final seconds = (pomodoro.timeRemaining % 60).toString().padLeft(2, '0');
+    final pomodoroTime = '$minutes:$seconds';
     
     // Calculate total due globally using the Universal Deck
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -142,7 +148,7 @@ class Sidebar extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               children: [
-                _buildSectionLabel('WORKSPACE'),
+                _buildSectionLabel('WORKSPACE', pomodoroTime, pomodoro.isActive),
                 _buildNavItem(
                   icon: Icons.grid_view_rounded,
                   label: 'Dashboard',
@@ -247,7 +253,7 @@ class Sidebar extends StatelessWidget {
                 
                 const SizedBox(height: 24),
                 
-                _buildSectionLabel('LOCAL COURSES (${deckProvider.courses.length})', padding: EdgeInsets.zero),
+                _buildSectionLabel('LOCAL COURSES (${deckProvider.courses.length})', pomodoroTime, pomodoro.isActive, padding: EdgeInsets.zero),
                 const SizedBox(height: 8),
                 ...deckProvider.courses.map((course) => _buildCourseItem(course, context)),
                 
@@ -329,7 +335,7 @@ class Sidebar extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildSectionLabel('FOLDERS (${deckProvider.folders.length})', padding: EdgeInsets.zero),
+                    _buildSectionLabel('FOLDERS (${deckProvider.folders.length})', pomodoroTime, pomodoro.isActive, padding: EdgeInsets.zero),
                     IconButton(
                       icon: const Icon(Icons.add, size: 18, color: Color(0xFF94A3B8)),
                       onPressed: onOpenNewFolder,
@@ -370,17 +376,49 @@ class Sidebar extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Row(
+                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'DAILY SRS QUEUE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2563EB),
-                          letterSpacing: 0.5,
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'DAILY SRS QUEUE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2563EB),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: pomodoro.isActive ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.timer_outlined,
+                                  size: 9,
+                                  color: pomodoro.isActive ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  pomodoroTime,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: pomodoro.isActive ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -445,17 +483,49 @@ class Sidebar extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionLabel(String text, {EdgeInsetsGeometry? padding}) {
+  Widget _buildSectionLabel(String text, String pomodoroTime, bool isActive, {EdgeInsetsGeometry? padding}) {
     return Padding(
       padding: padding ?? const EdgeInsets.only(bottom: 12, left: 4),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF94A3B8),
-          letterSpacing: 1.0,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF94A3B8),
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: isActive ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.timer_outlined,
+                  size: 10,
+                  color: isActive ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  pomodoroTime,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                    color: isActive ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -673,7 +743,27 @@ class Sidebar extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onSelected: (val) {
-                  if (val == 'delete') {
+                  if (val == 'shuffle') {
+                    final allDecks = context.read<DeckProvider>().decks;
+                    final folderDecks = allDecks.where((d) => d.id != 'universal' && d.folderId == id).toList();
+                    final allCards = folderDecks.expand((d) => d.cards).toList();
+                    if (allCards.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('No flashcards found in folder "$name".')),
+                      );
+                      return;
+                    }
+                    final shuffledCards = List<Flashcard>.from(allCards)..shuffle();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => StudySessionView(
+                          customSessionCards: shuffledCards,
+                          title: 'Shuffled - $name',
+                          deckId: id,
+                        ),
+                      ),
+                    );
+                  } else if (val == 'delete') {
                     showDialog(
                       context: context,
                       builder: (ctx) => AlertDialog(
@@ -708,6 +798,16 @@ class Sidebar extends StatelessWidget {
                   }
                 },
                 itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'shuffle',
+                    child: Row(
+                      children: [
+                        Icon(Icons.shuffle, size: 16, color: Color(0xFF3B82F6)),
+                        SizedBox(width: 8),
+                        Text('Shuffle & Study'),
+                      ],
+                    ),
+                  ),
                   const PopupMenuItem(
                     value: 'delete',
                     child: Row(

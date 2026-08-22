@@ -12,6 +12,7 @@ import '../../core/utils/cloze_parser.dart';
 import '../widgets/common/archetype_badge.dart';
 import '../widgets/common/markdown_view.dart';
 import '../widgets/common/code_editor_widget.dart';
+import '../widgets/common/pomodoro_timer_widget.dart';
 
 class StudySessionView extends StatefulWidget {
   final Deck? deck;
@@ -124,7 +125,7 @@ class _StudySessionViewState extends State<StudySessionView> {
     final currentCard = _dueCards[_currentIndex];
     final updatedCard = SRSEngine.calculateNextReview(currentCard, grade);
 
-    // Update in provider (resolves the actual deck containing the card)
+    // Update in provider and sync to local storage
     final resolvedDeckId = widget.deck?.id ?? (widget.deckId != 'universal' && widget.deckId != 'custom' ? widget.deckId : null) ?? currentCard.deckId;
     await context.read<DeckProvider>().updateCard(resolvedDeckId, updatedCard);
     
@@ -132,18 +133,31 @@ class _StudySessionViewState extends State<StudySessionView> {
     await context.read<DeckProvider>().logReview(resolvedDeckId ?? 'universal', updatedCard.id, grade.name);
     if (!mounted) return;
 
-    if (_currentIndex < _dueCards.length - 1) {
+    if (grade == Grade.again) {
+      // Re-queue card to be reviewed again in this session
       setState(() {
+        _dueCards.add(updatedCard);
         _currentIndex++;
         _isFlipped = false;
         _currentCode = '';
         _aiFeedback = null;
+        _isEvaluatingCode = false;
       });
     } else {
-      if (widget.onComplete != null) {
-        widget.onComplete!();
+      if (_currentIndex < _dueCards.length - 1) {
+        setState(() {
+          _currentIndex++;
+          _isFlipped = false;
+          _currentCode = '';
+          _aiFeedback = null;
+          _isEvaluatingCode = false;
+        });
       } else {
-        Navigator.of(context).pop();
+        if (widget.onComplete != null) {
+          widget.onComplete!();
+        } else {
+          Navigator.of(context).pop();
+        }
       }
     }
   }
@@ -253,6 +267,8 @@ class _StudySessionViewState extends State<StudySessionView> {
         ),
         centerTitle: true,
         actions: [
+          const PomodoroTimerWidget(),
+          const SizedBox(width: 8),
           Center(
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
@@ -356,11 +372,29 @@ class _StudySessionViewState extends State<StudySessionView> {
                       child: _isFlipped 
                           ? Row(
                               children: [
-                                _buildGradeButton('Again', AppColors.error, () => _gradeCard(Grade.again), isMobile),
+                                _buildGradeButton(
+                                  'Again',
+                                  SRSEngine.getIntervalLabel(currentCard, Grade.again),
+                                  AppColors.error,
+                                  () => _gradeCard(Grade.again),
+                                  isMobile,
+                                ),
                                 SizedBox(width: isMobile ? 8 : 16),
-                                _buildGradeButton('Good', AppColors.success, () => _gradeCard(Grade.good), isMobile),
+                                _buildGradeButton(
+                                  'Good',
+                                  SRSEngine.getIntervalLabel(currentCard, Grade.good),
+                                  AppColors.success,
+                                  () => _gradeCard(Grade.good),
+                                  isMobile,
+                                ),
                                 SizedBox(width: isMobile ? 8 : 16),
-                                _buildGradeButton('Easy', AppColors.primary, () => _gradeCard(Grade.easy), isMobile),
+                                _buildGradeButton(
+                                  'Easy',
+                                  SRSEngine.getIntervalLabel(currentCard, Grade.easy),
+                                  AppColors.primary,
+                                  () => _gradeCard(Grade.easy),
+                                  isMobile,
+                                ),
                               ],
                             )
                           : SizedBox(
@@ -497,19 +531,29 @@ class _StudySessionViewState extends State<StudySessionView> {
     );
   }
 
-  Widget _buildGradeButton(String label, Color color, VoidCallback onPressed, bool isMobile) {
+  Widget _buildGradeButton(String label, String intervalLabel, Color color, VoidCallback onPressed, bool isMobile) {
     return Expanded(
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           foregroundColor: color,
-          side: BorderSide(color: color.withValues(alpha: 0.2), width: 2),
-          padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 20),
+          side: BorderSide(color: color.withValues(alpha: 0.3), width: 2),
+          padding: EdgeInsets.symmetric(vertical: isMobile ? 8 : 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
-        child: Text(
-          label,
-          style: TextStyle(fontSize: isMobile ? 14 : 18, fontWeight: FontWeight.bold),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: isMobile ? 14 : 17, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              intervalLabel,
+              style: TextStyle(fontSize: isMobile ? 11 : 12, color: color.withValues(alpha: 0.8), fontWeight: FontWeight.w600),
+            ),
+          ],
         ),
       ),
     );

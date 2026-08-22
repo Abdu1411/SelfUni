@@ -8,6 +8,9 @@ import '../../core/services/storage_service.dart';
 import '../../providers/deck_provider.dart';
 import '../../providers/active_view_provider.dart';
 import '../../models/deck_model.dart';
+import '../../models/folder_model.dart';
+import '../widgets/modals/folder_modal.dart';
+import '../widgets/modals/select_folder_modal.dart';
 
 enum GenerationTarget { lesson, deck, both }
 
@@ -135,6 +138,30 @@ class _StudioViewState extends State<StudioView> {
       return;
     }
 
+    if (!mounted) return;
+    final deckProvider = context.read<DeckProvider>();
+    String? targetFolderId = _selectedFolderId;
+
+    // Destination folder is mandatory!
+    if (targetFolderId == null || targetFolderId.isEmpty || !deckProvider.folders.any((f) => f.id == targetFolderId)) {
+      if (!mounted) return;
+      final chosenFolderId = await SelectFolderModal.show(
+        context,
+        initialFolderId: _selectedFolderId,
+        title: 'Choose Target Folder',
+        description: 'A destination folder is mandatory before synthesizing "$topic". Please select an existing course folder or create a new one.',
+      );
+      if (chosenFolderId == null) {
+        return; // User cancelled without choosing a folder
+      }
+      targetFolderId = chosenFolderId;
+      if (mounted) {
+        setState(() {
+          _selectedFolderId = chosenFolderId;
+        });
+      }
+    }
+
     setState(() {
       if (target == GenerationTarget.deck) {
         _isGeneratingCards = true;
@@ -144,6 +171,8 @@ class _StudioViewState extends State<StudioView> {
         _isGeneratingBoth = true;
       }
     });
+
+    if (!mounted) return;
 
     // Show Progress Dialog
     showDialog(
@@ -252,7 +281,7 @@ class _StudioViewState extends State<StudioView> {
             id: DateTime.now().millisecondsSinceEpoch.toString(),
             title: topic,
             cards: cards,
-            folderId: _selectedFolderId,
+            folderId: targetFolderId,
           );
           context.read<DeckProvider>().addDeck(deck);
 
@@ -276,7 +305,7 @@ class _StudioViewState extends State<StudioView> {
         );
 
         if (mounted) {
-          lesson.folderId = _selectedFolderId;
+          lesson.folderId = targetFolderId;
           context.read<DeckProvider>().addLesson(lesson);
 
           _clearForm();
@@ -308,14 +337,14 @@ class _StudioViewState extends State<StudioView> {
         );
 
         if (mounted) {
-          lesson.folderId = _selectedFolderId;
+          lesson.folderId = targetFolderId;
           context.read<DeckProvider>().addLesson(lesson);
 
           final deck = Deck(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
             title: topic,
             cards: cards,
-            folderId: _selectedFolderId,
+            folderId: targetFolderId,
           );
           context.read<DeckProvider>().addDeck(deck);
 
@@ -702,16 +731,40 @@ class _StudioViewState extends State<StudioView> {
                         ),
                       ],
 
-                      const SizedBox(height: 24),
-
-                      _buildLabel('TARGET FOLDER (OPTIONAL)'),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildLabel('DESTINATION FOLDER (REQUIRED)'),
+                          TextButton.icon(
+                            onPressed: () async {
+                              final newFolder = await showDialog<Folder>(
+                                context: context,
+                                builder: (ctx) => FolderModal(
+                                  onSave: (name, color) async {
+                                    final folder = await context.read<DeckProvider>().addFolder(name, color: color);
+                                    if (ctx.mounted) Navigator.of(ctx).pop(folder);
+                                  },
+                                ),
+                              );
+                              if (newFolder != null && mounted) {
+                                setState(() => _selectedFolderId = newFolder.id);
+                              }
+                            },
+                            icon: const Icon(Icons.create_new_folder_outlined, size: 16, color: AppColors.primary),
+                            label: const Text('+ Create New Folder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary)),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
                           color: Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
+                          border: Border.all(
+                            color: _selectedFolderId == null ? AppColors.primary.withValues(alpha: 0.5) : Colors.grey.shade200,
+                            width: _selectedFolderId == null ? 1.5 : 1.0,
+                          ),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String?>(
@@ -721,51 +774,33 @@ class _StudioViewState extends State<StudioView> {
                             hint: Row(
                               children: [
                                 const Icon(
-                                  Icons.folder,
-                                  color: Colors.amber,
+                                  Icons.folder_outlined,
+                                  color: AppColors.primary,
                                   size: 20,
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  'Unfiled (No Folder)',
-                                  style: TextStyle(color: Colors.grey.shade700),
+                                  folders.isEmpty ? 'No folders exist — Click "+ Create New Folder"' : 'Choose a destination folder (Required)...',
+                                  style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 13),
                                 ),
                               ],
                             ),
-                            items: [
-                              const DropdownMenuItem<String?>(
-                                value: null,
+                            items: folders.map((f) {
+                              return DropdownMenuItem<String?>(
+                                value: f.id,
                                 child: Row(
                                   children: [
                                     Icon(
-                                      Icons.folder_open,
-                                      color: Colors.grey,
+                                      Icons.folder,
+                                      color: _parseColor(f.color ?? '#2563eb'),
                                       size: 20,
                                     ),
-                                    SizedBox(width: 12),
-                                    Text('Unfiled (No Folder)'),
+                                    const SizedBox(width: 12),
+                                    Text(f.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                                   ],
                                 ),
-                              ),
-                              ...folders.map((f) {
-                                return DropdownMenuItem<String?>(
-                                  value: f.id,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.folder,
-                                        color: _parseColor(
-                                          f.color ?? '#2563eb',
-                                        ),
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(f.name),
-                                    ],
-                                  ),
-                                );
-                              }),
-                            ],
+                              );
+                            }).toList(),
                             onChanged: (val) {
                               setState(() {
                                 _selectedFolderId = val;

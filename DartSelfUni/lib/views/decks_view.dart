@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/deck_provider.dart';
 import '../../models/deck_model.dart';
 import '../../models/folder_model.dart';
+import '../../models/card_model.dart';
 import '../../models/lesson_model.dart';
 import '../widgets/modals/rename_deck_modal.dart';
 import '../widgets/modals/move_resource_modal.dart';
@@ -363,6 +364,39 @@ class _DecksViewState extends State<DecksView> {
                     final Folder folder = selectedFolder!;
                     return Row(
                       children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            final allDecks = context.read<DeckProvider>().decks;
+                            final folderDecks = allDecks.where((d) => d.id != 'universal' && d.folderId == folder.id).toList();
+                            final allCards = folderDecks.expand((d) => d.cards).toList();
+                            if (allCards.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('No flashcards found in folder "${folder.name}".')),
+                              );
+                              return;
+                            }
+                            final shuffledCards = List<Flashcard>.from(allCards)..shuffle();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => StudySessionView(
+                                  customSessionCards: shuffledCards,
+                                  title: 'Shuffled - ${folder.name}',
+                                  deckId: folder.id,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.shuffle, size: 16),
+                          label: const Text('Shuffle & Study', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF3B82F6),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            elevation: 0,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         OutlinedButton.icon(
                           onPressed: () {
                             showDialog(
@@ -704,7 +738,25 @@ class _DecksViewState extends State<DecksView> {
                                 padding: isSmallCard ? EdgeInsets.zero : const EdgeInsets.all(8),
                                 constraints: isSmallCard ? const BoxConstraints(minWidth: 40) : null,
                                 onSelected: (val) {
-                                  if (val == 'open') {
+                                  if (val == 'shuffle') {
+                                    final allCards = folderDecks.expand((d) => d.cards).toList();
+                                    if (allCards.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('No flashcards found in folder "${folder.name}".')),
+                                      );
+                                      return;
+                                    }
+                                    final shuffledCards = List<Flashcard>.from(allCards)..shuffle();
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => StudySessionView(
+                                          customSessionCards: shuffledCards,
+                                          title: 'Shuffled - ${folder.name}',
+                                          deckId: folder.id,
+                                        ),
+                                      ),
+                                    );
+                                  } else if (val == 'open') {
                                     setState(() => _selectedFolderId = folder.id);
                                   } else if (val == 'rename') {
                                     showDialog(
@@ -722,9 +774,46 @@ class _DecksViewState extends State<DecksView> {
                                   }
                                 },
                                 itemBuilder: (context) => [
-                                  const PopupMenuItem(value: 'open', child: Text('Open Folder')),
-                                  const PopupMenuItem(value: 'rename', child: Text('Rename Folder')),
-                                  const PopupMenuItem(value: 'delete', child: Text('Delete Folder')),
+                                  const PopupMenuItem(
+                                    value: 'shuffle',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.shuffle, size: 16, color: Color(0xFF3B82F6)),
+                                        SizedBox(width: 8),
+                                        Text('Shuffle & Study'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'open',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.folder_open, size: 16, color: Color(0xFF475569)),
+                                        SizedBox(width: 8),
+                                        Text('Open Folder'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'rename',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit_outlined, size: 16, color: Color(0xFF475569)),
+                                        SizedBox(width: 8),
+                                        Text('Rename Folder'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                                        SizedBox(width: 8),
+                                        Text('Delete Folder', style: TextStyle(color: AppColors.error)),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],
@@ -827,7 +916,24 @@ class _DecksViewState extends State<DecksView> {
                     PopupMenuButton<String>(
                       icon: const Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
                       onSelected: (val) {
-                        if (val == 'relearn') {
+                        if (val == 'shuffle') {
+                          if (deck.cards.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Deck "${deck.title}" has no flashcards.')),
+                            );
+                            return;
+                          }
+                          final shuffledCards = List<Flashcard>.from(deck.cards)..shuffle();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => StudySessionView(
+                                deck: deck,
+                                customSessionCards: shuffledCards,
+                                title: 'Shuffled - ${deck.title}',
+                              ),
+                            ),
+                          );
+                        } else if (val == 'relearn') {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => StudySessionView(deck: deck, isRelearning: true),
@@ -846,6 +952,16 @@ class _DecksViewState extends State<DecksView> {
                         }
                       },
                       itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'shuffle',
+                          child: Row(
+                            children: [
+                              Icon(Icons.shuffle, size: 16, color: Color(0xFF3B82F6)),
+                              SizedBox(width: 8),
+                              Text('Shuffle & Study'),
+                            ],
+                          ),
+                        ),
                         const PopupMenuItem(
                           value: 'relearn',
                           child: Row(

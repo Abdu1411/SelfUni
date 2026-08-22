@@ -131,7 +131,6 @@ class _LessonsViewState extends State<LessonsView> {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
-        allowMultiple: true,
       );
       if (result.isNotEmpty) {
         for (final f in result) {

@@ -7,6 +7,52 @@ enum Grade {
 }
 
 class SRSEngine {
+  static int getIntervalDays(Flashcard card, Grade grade) {
+    int interval = card.interval;
+    double ease = card.ease;
+    int reps = card.reps;
+
+    if (grade == Grade.again) {
+      return 1;
+    } else if (grade == Grade.good) {
+      reps += 1;
+      if (reps == 1) {
+        return 1;
+      } else if (reps == 2) {
+        return 6;
+      } else {
+        return (interval * ease).round();
+      }
+    } else if (grade == Grade.easy) {
+      reps += 1;
+      ease += 0.15;
+      if (reps == 1) {
+        return 4;
+      } else {
+        return (interval * ease * 1.3).round();
+      }
+    }
+    return 1;
+  }
+
+  static String getIntervalLabel(Flashcard card, Grade grade) {
+    final days = getIntervalDays(card, grade);
+    if (grade == Grade.again) {
+      return '< 1m (1d)';
+    }
+    if (days < 1) {
+      return '1d';
+    } else if (days < 30) {
+      return '${days}d';
+    } else if (days < 365) {
+      final months = (days / 30).toStringAsFixed(days % 30 == 0 ? 0 : 1);
+      return '${months}mo';
+    } else {
+      final years = (days / 365).toStringAsFixed(1);
+      return '${years}y';
+    }
+  }
+
   static Flashcard calculateNextReview(Flashcard card, Grade grade) {
     final now = DateTime.now().millisecondsSinceEpoch;
     int interval = card.interval;
@@ -47,3 +93,4 @@ class SRSEngine {
     );
   }
 }
+

@@ -7,6 +7,7 @@ import '../../models/lesson_model.dart';
 import '../../providers/deck_provider.dart';
 import '../widgets/common/rich_note_editor.dart';
 import '../widgets/modals/folder_modal.dart';
+import '../widgets/common/pomodoro_timer_widget.dart';
 
 class PdfViewerView extends StatefulWidget {
   final Lesson lesson;
@@ -221,9 +222,12 @@ class _PdfViewerViewState extends State<PdfViewerView> {
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
+          overflow: TextOverflow.ellipsis,
         ),
         centerTitle: true,
         actions: [
+          const PomodoroTimerWidget(),
+          const SizedBox(width: 8),
           IconButton(
             icon: Icon(_isSidebarOpen ? Icons.view_sidebar : Icons.view_sidebar_outlined, color: AppColors.textSecondary),
             tooltip: _isSidebarOpen ? 'Hide Documents' : 'Show Documents',
@@ -234,7 +238,7 @@ class _PdfViewerViewState extends State<PdfViewerView> {
             tooltip: 'Save Notes',
             onPressed: _saveNotesWithFolderPrompt,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
         ],
       ),
       body: Row(

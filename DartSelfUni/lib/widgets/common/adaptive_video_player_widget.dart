@@ -108,10 +108,20 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
         _directStreamUrl = streamUrl;
         await _player?.open(Media(streamUrl), play: false);
         
-        final prefs = await SharedPreferences.getInstance();
-        final savedMs = prefs.getInt('video_pos_${widget.videoUrl}');
-        if (savedMs != null && savedMs > 0) {
-          await _player?.seek(Duration(milliseconds: savedMs));
+        if (_player != null && mounted) {
+          await _player!.stream.duration
+              .firstWhere((duration) => duration > Duration.zero)
+              .timeout(const Duration(seconds: 5), onTimeout: () => Duration.zero);
+          
+          if (mounted) {
+            final prefs = await SharedPreferences.getInstance();
+            final savedMs = prefs.getInt('video_pos_${widget.videoUrl}');
+            debugPrint("DEBUG WATCH POSITION: Restoring position for ${widget.videoUrl}, savedMs: $savedMs");
+            if (savedMs != null && savedMs > 0) {
+              await _player!.seek(Duration(milliseconds: savedMs));
+              debugPrint("DEBUG WATCH POSITION: Seek successful to $savedMs ms");
+            }
+          }
         }
       } else if (mounted) {
         _errorMessage = "Could not extract video stream directly. You can reload or play externally.";
@@ -173,6 +183,7 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
     if (_lastSavedTime == null || now.difference(_lastSavedTime!) > const Duration(seconds: 3)) {
       _lastSavedTime = now;
       final prefs = await SharedPreferences.getInstance();
+      debugPrint("DEBUG WATCH POSITION: Throttled save: ${pos.inMilliseconds} ms");
       await prefs.setInt('video_pos_${widget.videoUrl}', pos.inMilliseconds);
     }
   }
@@ -181,11 +192,14 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
     if (_player == null) return;
     final pos = _player!.state.position;
     final dur = _player!.state.duration;
+    debugPrint("DEBUG WATCH POSITION: Saving position immediately for ${widget.videoUrl}: $pos / $dur");
     final prefs = await SharedPreferences.getInstance();
     
     if (dur != Duration.zero && (dur.inMilliseconds - pos.inMilliseconds) < 10000) {
+      debugPrint("DEBUG WATCH POSITION: Near end, removing saved progress");
       await prefs.remove('video_pos_${widget.videoUrl}');
     } else {
+      debugPrint("DEBUG WATCH POSITION: Saved position: ${pos.inMilliseconds} ms");
       await prefs.setInt('video_pos_${widget.videoUrl}', pos.inMilliseconds);
     }
   }
