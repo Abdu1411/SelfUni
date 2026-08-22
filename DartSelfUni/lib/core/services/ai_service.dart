@@ -70,36 +70,38 @@ class AIService {
     required String topic,
     String? rawText,
   }) async {
-    final systemPrompt = 'You are an expert computer science instructor. Respond ONLY with a valid JSON object containing a "cards" array.';
+    final systemPrompt = 'You are an expert academic instructor. Respond ONLY with a valid JSON object containing a "cards" array.';
     final userPrompt = '''
-    You are an expert Computer Science instructor.
+    You are an expert academic and technical instructor.
     Your mission is to read and analyze the provided topic and/or content and convert it into a comprehensive deck of 15 Anki-style spaced repetition flashcards.
     
-    CRITICAL UNIVERSAL CONVERSION RULE - IDIOMATIC CODE:
-    - Auto-detect the primary programming language of the topic/content (e.g., Python, C++, Java, JavaScript, Dart, Go, Rust, SQL, etc.) from the content/context. Generate all code snippets and coding challenges in that language. If no specific language is used or mentioned, default to Python or pseudocode.
-    - Translate any implementation details into clean, idiomatic, modern code of that detected language.
-    - Use LaTeX math notation (\$O(N \\log N)\$, etc.) for all complexity bounds.
+    CRITICAL UNIVERSAL CONVERSION RULE - IDIOMATIC CODE / SUBJECT DETECT:
+    - Auto-detect the primary subject of the topic/content. If the topic involves algorithms, data structures, programming, or coding in general, auto-detect the programming language and generate code snippets/challenges in that language.
+    - If the topic is a non-programming subject (e.g., mathematics, science, history, law, medicine, finance), focus card content on key conceptual relationships, formulas, definitions, and explanations.
+    - Use LaTeX math notation (\$O(N \\log N)\$, \$E = mc^2\$, etc.) for all equations and complexity bounds.
     
     CRITICAL CODE-IN-QUESTION INCLUSION RULE:
-    - When asking about anything related to code, provide the relevant code snippet directly in the "front" field within a formatted ```language ... ``` code block (using the correct Markdown language identifier for the detected language, e.g. ```python, ```cpp, ```java, ```dart).
+    - When asking about anything related to code, provide the relevant code snippet directly in the "front" field within a formatted ```language ... ``` code block.
     
     MANDATORY ARCHETYPE DISTRIBUTION QUOTA (CRITICAL REQUIREMENT):
-    You MUST generate a deck containing ALL 9 ARCHETYPES with the following strict minimums:
-    1. 'Implementation' (AT LEAST 2 CARDS): Interactive coding challenges asking the student to write or complete code.
+    You MUST generate a deck containing a mixture of the following archetypes:
+    1. 'Implementation' (Coding challenges) OR 'Explain' (Conceptual explanations):
+       - If the topic involves coding/programming, you MUST generate AT LEAST 2 'Implementation' cards (interactive coding challenges asking the student to write or complete code).
+       - If the topic is non-programming or theoretical, you MUST generate AT LEAST 2 'Explain' cards (conceptual questions asking the student to write a detailed explanation of a topic in their own words) instead of 'Implementation' cards.
     2. 'Concept' (AT LEAST 1 CARD): Core theoretical intuition, definitions & "Why".
-    3. 'Complexity' (AT LEAST 1 CARD): Time & Space Big-O analysis with LaTeX math.
-    4. 'Pattern' (AT LEAST 1 CARD): Algorithmic pattern recognition.
+    3. 'Complexity' (AT LEAST 1 CARD): Time/space complexity or structural complexity analysis.
+    4. 'Pattern' (AT LEAST 1 CARD): Pattern recognition (algorithmic templates or subject-specific frameworks).
     5. 'Cloze' (AT LEAST 1 CARD): Fill-in-the-blank using {{c1::answer}} notation in the question.
     6. 'Comparison' (AT LEAST 1 CARD): Head-to-head comparison.
-    7. 'Trace' (AT LEAST 1 CARD): Step-by-step execution simulation.
-    8. 'Invariant' (AT LEAST 1 CARD): Loop invariant or correctness proof.
-    9. 'Debugging' (AT LEAST 1 CARD): Spotting a bug trap or logical pitfall.
+    7. 'Trace' (AT LEAST 1 CARD): Step-by-step state tracing or process simulation.
+    8. 'Invariant' (AT LEAST 1 CARD): System invariants, structural rules, or fundamental correctness truths.
+    9. 'Debugging' (AT LEAST 1 CARD): Spotting a bug, error, logical pitfall, or factual misconception.
     
     OUTPUT JSON SCHEMA:
     {
       "cards": [
         {
-          "type": "Concept" | "Complexity" | "Pattern" | "Cloze" | "Comparison" | "Trace" | "Invariant" | "Debugging" | "Implementation",
+          "type": "Concept" | "Complexity" | "Pattern" | "Cloze" | "Comparison" | "Trace" | "Invariant" | "Debugging" | "Implementation" | "Explain",
           "front": "Markdown and LaTeX question",
           "back": "Detailed Markdown and LaTeX answer",
           "codeSnippet": "Optional code snippet"
@@ -240,6 +242,48 @@ class AIService {
 
     final result = await _callDeepSeek([
       {'role': 'system', 'content': 'You are an expert software engineering interviewer. Respond ONLY with a valid JSON object containing "grade" and "feedback".'},
+      {'role': 'user', 'content': evaluationPrompt},
+    ]);
+
+    return {
+      'grade': result['grade']?.toString() ?? 'Good',
+      'feedback': result['feedback']?.toString() ?? 'Feedback generated.',
+    };
+  }
+
+  Future<Map<String, String>> evaluateExplanation({
+    required String prompt,
+    required String explanation,
+  }) async {
+    final evaluationPrompt = '''
+    You are an expert academic tutor. Evaluate the student's open-ended explanation/answer to the following conceptual question.
+    
+    QUESTION / PROMPT:
+    $prompt
+    
+    STUDENT'S EXPLANATION:
+    $explanation
+    
+    EVALUATION INSTRUCTIONS:
+    1. Accuracy: Did the student explain the concept correctly?
+    2. Completeness: Did they address all key points of the question?
+    3. Clarity: Is the explanation clear, logical, and well-structured?
+    4. Feedback: Write a clear, structured review in Markdown.
+    
+    Grade the submission as one of:
+    - "Easy": Complete, accurate, and exceptionally clear.
+    - "Good": Mostly correct and clear, with minor omissions or slight inaccuracies.
+    - "Again": Major misconceptions, incorrect facts, or completely missed the point.
+    
+    Respond ONLY with a valid JSON object:
+    {
+      "grade": "Easy" | "Good" | "Again",
+      "feedback": "Markdown feedback with constructive analysis, corrections, and tips"
+    }
+    ''';
+
+    final result = await _callDeepSeek([
+      {'role': 'system', 'content': 'You are an expert academic tutor. Respond ONLY with a valid JSON object containing "grade" and "feedback".'},
       {'role': 'user', 'content': evaluationPrompt},
     ]);
 

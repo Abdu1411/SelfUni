@@ -9,7 +9,8 @@ enum CardType {
   trace,
   invariant,
   debugging,
-  implementation
+  implementation,
+  explain
 }
 
 extension CardTypeExtension on CardType {
@@ -24,6 +25,7 @@ extension CardTypeExtension on CardType {
       case CardType.invariant: return 'Invariant';
       case CardType.debugging: return 'Debugging';
       case CardType.implementation: return 'Implementation';
+      case CardType.explain: return 'Explain';
     }
   }
 
@@ -36,6 +38,7 @@ extension CardTypeExtension on CardType {
     if (clean.contains('trace')) return CardType.trace;
     if (clean.contains('invar')) return CardType.invariant;
     if (clean.contains('debug')) return CardType.debugging;
+    if (clean.contains('explain')) return CardType.explain;
     if (clean.contains('implement') || clean.contains('code') || clean.contains('coding') || clean.contains('dart')) return CardType.implementation;
     if (clean.contains('concept')) return CardType.concept;
     return CardType.concept;
@@ -124,15 +127,23 @@ class ArchetypeConfig {
       borderColor: Color(0xFFFECDD3),
       description: 'Identifying off-by-one errors, null checks, and bug fixes',
     ),
-    CardType.implementation: ArchetypeConfig(
-      label: 'Coding',
-      icon: Icons.code,
-      color: Color(0xFF0284C7),
-      backgroundColor: Color(0xFFF0F9FF),
-      borderColor: Color(0xFFBAE6FD),
-      description: 'Code snippet implementation and syntax drills',
-    ),
-  };
+  CardType.implementation: ArchetypeConfig(
+    label: 'Coding',
+    icon: Icons.code,
+    color: Color(0xFF0284C7),
+    backgroundColor: Color(0xFFF0F9FF),
+    borderColor: Color(0xFFBAE6FD),
+    description: 'Code snippet implementation and syntax drills',
+  ),
+  CardType.explain: ArchetypeConfig(
+    label: 'Explain',
+    icon: Icons.history_edu,
+    color: Color(0xFF7C3AED),
+    backgroundColor: Color(0xFFF5F3FF),
+    borderColor: Color(0xFFDDD6FE),
+    description: 'Conceptual explanations graded by AI helper',
+  ),
+};
 }
 
 class Flashcard {

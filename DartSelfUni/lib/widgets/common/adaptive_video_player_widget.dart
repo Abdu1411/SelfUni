@@ -4,6 +4,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/youtube_stream_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AdaptiveVideoPlayerWidget extends StatefulWidget {
   final String videoUrl;
@@ -55,6 +56,7 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
     _player!.stream.position.listen((pos) {
       if (mounted) {
         setState(() => _position = pos);
+        _savePositionThrottled(pos);
       }
     });
 
@@ -105,6 +107,12 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
       if (mounted && streamUrl != null) {
         _directStreamUrl = streamUrl;
         await _player?.open(Media(streamUrl), play: false);
+        
+        final prefs = await SharedPreferences.getInstance();
+        final savedMs = prefs.getInt('video_pos_${widget.videoUrl}');
+        if (savedMs != null && savedMs > 0) {
+          await _player?.seek(Duration(milliseconds: savedMs));
+        }
       } else if (mounted) {
         _errorMessage = "Could not extract video stream directly. You can reload or play externally.";
       }
@@ -123,6 +131,9 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
 
   @override
   void dispose() {
+    if (_player != null) {
+      _savePositionImmediately();
+    }
     try {
       _player?.stop();
       _player?.dispose();
@@ -135,6 +146,7 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
     
     if (_isPlaying) {
       _player!.pause();
+      _savePositionImmediately();
     } else {
       _player!.play();
     }
@@ -147,9 +159,34 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
   void pause() {
     if (_player != null && _isPlaying) {
       _player!.pause();
+      _savePositionImmediately();
       if (widget.onPlayToggled != null) {
         widget.onPlayToggled!();
       }
+    }
+  }
+
+  DateTime? _lastSavedTime;
+
+  void _savePositionThrottled(Duration pos) async {
+    final now = DateTime.now();
+    if (_lastSavedTime == null || now.difference(_lastSavedTime!) > const Duration(seconds: 3)) {
+      _lastSavedTime = now;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('video_pos_${widget.videoUrl}', pos.inMilliseconds);
+    }
+  }
+
+  void _savePositionImmediately() async {
+    if (_player == null) return;
+    final pos = _player!.state.position;
+    final dur = _player!.state.duration;
+    final prefs = await SharedPreferences.getInstance();
+    
+    if (dur != Duration.zero && (dur.inMilliseconds - pos.inMilliseconds) < 10000) {
+      await prefs.remove('video_pos_${widget.videoUrl}');
+    } else {
+      await prefs.setInt('video_pos_${widget.videoUrl}', pos.inMilliseconds);
     }
   }
 

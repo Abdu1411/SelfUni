@@ -64,12 +64,14 @@ class _StudySessionViewState extends State<StudySessionView> {
   void _flipCard() async {
     final currentCard = _dueCards[_currentIndex];
     
-    if (currentCard.type == CardType.implementation) {
-      final cleanCode = _currentCode.trim();
-      if (cleanCode.isEmpty || cleanCode == '// Write your code here') {
+    if (currentCard.type == CardType.implementation || currentCard.type == CardType.explain) {
+      final cleanSubmission = _currentCode.trim();
+      if (cleanSubmission.isEmpty || (currentCard.type == CardType.implementation && cleanSubmission == '// Write your code here')) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please write your implementation code in the editor! (If stuck, write a comment like "// stuck" to see reference answer)'),
+          SnackBar(
+            content: Text(currentCard.type == CardType.implementation
+                ? 'Please write your implementation code in the editor! (If stuck, write a comment like "// stuck" to see reference answer)'
+                : 'Please write your explanation in the text field!'),
             backgroundColor: AppColors.primary,
           ),
         );
@@ -81,10 +83,15 @@ class _StudySessionViewState extends State<StudySessionView> {
       });
       
       try {
-        final result = await AIService().evaluateCode(
-          prompt: currentCard.front,
-          code: _currentCode,
-        );
+        final result = currentCard.type == CardType.implementation
+            ? await AIService().evaluateCode(
+                prompt: currentCard.front,
+                code: _currentCode,
+              )
+            : await AIService().evaluateExplanation(
+                prompt: currentCard.front,
+                explanation: _currentCode,
+              );
         if (mounted) {
           setState(() {
             _aiFeedback = '### AI Grade: ${result['grade']}\n\n${result['feedback']}';
@@ -93,7 +100,7 @@ class _StudySessionViewState extends State<StudySessionView> {
       } catch (e) {
         if (mounted) {
           setState(() {
-            _aiFeedback = 'Error evaluating code: $e';
+            _aiFeedback = 'Error evaluating submission: $e';
           });
         }
       } finally {
@@ -414,6 +421,31 @@ class _StudySessionViewState extends State<StudySessionView> {
             onChanged: (val) {
               _currentCode = val;
             },
+          ),
+        ],
+        if (!_isFlipped && card.type == CardType.explain) ...[
+          const SizedBox(height: 24),
+          const Text('Your Explanation:', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: TextField(
+              maxLines: 8,
+              onChanged: (val) {
+                _currentCode = val;
+              },
+              style: const TextStyle(fontSize: 14.5, height: 1.5, color: AppColors.textPrimary),
+              decoration: const InputDecoration(
+                hintText: 'Type your explanation here...',
+                border: InputBorder.none,
+                isDense: true,
+              ),
+            ),
           ),
         ],
       ],
