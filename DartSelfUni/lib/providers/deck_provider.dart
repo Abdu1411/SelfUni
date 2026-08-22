@@ -59,6 +59,17 @@ class DeckProvider extends ChangeNotifier {
         createdAt: DateTime.now().millisecondsSinceEpoch,
       ));
       await _storageService.saveDecks(_decks);
+    } else {
+      // Sync/purge orphaned cards from the Universal Deck that no longer exist in any other active deck
+      final activeCardIds = _decks.where((d) => d.id != 'universal').expand((d) => d.cards).map((c) => c.id).toSet();
+      final univIdx = _decks.indexWhere((d) => d.id == 'universal');
+      if (univIdx != -1) {
+        final originalCount = _decks[univIdx].cards.length;
+        _decks[univIdx].cards.removeWhere((c) => !activeCardIds.contains(c.id));
+        if (_decks[univIdx].cards.length != originalCount) {
+          await _storageService.saveDecks(_decks);
+        }
+      }
     }
 
     // Auto-clean orphaned lessons & decks if no matching folder or course exists
@@ -71,6 +82,19 @@ class DeckProvider extends ChangeNotifier {
       return !hasFolder && !hasCourse;
     });
 
+    final originalDecksCount = _decks.length;
+    _decks.removeWhere((d) => d.id != 'universal' && d.folderId != null && !activeFolderIds.contains(d.folderId));
+    
+    // Sync Universal Deck if any orphaned decks were removed
+    final activeCardIdsAfter = _decks.where((d) => d.id != 'universal').expand((d) => d.cards).map((c) => c.id).toSet();
+    final univIdxAfter = _decks.indexWhere((d) => d.id == 'universal');
+    if (univIdxAfter != -1) {
+      _decks[univIdxAfter].cards.removeWhere((c) => !activeCardIdsAfter.contains(c.id));
+    }
+
+    if (_decks.length != originalDecksCount) {
+      await _storageService.saveDecks(_decks);
+    }
     await _storageService.saveLessons(_lessons);
 
     _isLoading = false;
@@ -87,6 +111,17 @@ class DeckProvider extends ChangeNotifier {
       return !hasFolder && !hasCourse;
     });
 
+    // Clean up decks whose folderId is no longer in active folders
+    _decks.removeWhere((d) => d.id != 'universal' && d.folderId != null && !activeFolderIds.contains(d.folderId));
+    
+    // Sync Universal Deck
+    final activeCardIds = _decks.where((d) => d.id != 'universal').expand((d) => d.cards).map((c) => c.id).toSet();
+    final univIdx = _decks.indexWhere((d) => d.id == 'universal');
+    if (univIdx != -1) {
+      _decks[univIdx].cards.removeWhere((c) => !activeCardIds.contains(c.id));
+    }
+
+    await _storageService.saveDecks(_decks);
     await _storageService.saveLessons(_lessons);
     notifyListeners();
   }
