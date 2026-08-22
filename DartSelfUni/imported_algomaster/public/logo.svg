@@ -1,0 +1,37 @@
+﻿<svg xmlns=http://www.w3.org/2000/svg viewBox=0 0 100 100 fill=none>
+  <defs>
+    <linearGradient id=bgGrad x1=0% y1=0% x2=100% y2=100%>
+      <stop offset=0% stop-color=#2563EB />
+      <stop offset=50% stop-color=#4F46E5 />
+      <stop offset=100% stop-color=#06B6D4 />
+    </linearGradient>
+    <linearGradient id=boltGrad x1=0% y1=0% x2=100% y2=100%>
+      <stop offset=0% stop-color=#FFFFFF />
+      <stop offset=100% stop-color=#FCD34D />
+    </linearGradient>
+    <filter id=glow x=-20% y=-20% width=140% height=140%>
+      <feDropShadow dx=0 dy=4 stdDeviation=4 flood-color=#000 flood-opacity=0.25/>
+    </filter>
+  </defs>
+  
+  <!-- Outer Rounded Badge -->
+  <rect width=100 height=100 rx=26 fill=url(#bgGrad) filter=url(#glow)/>
+  
+  <!-- Subtle Internal Border -->
+  <rect x=2 y=2 width=96 height=96 rx=24 stroke=white stroke-opacity=0.25 stroke-width=2.5 fill=none/>
+  
+  <!-- Algorithmic Diamond Grid Nodes -->
+  <circle cx=28 cy=50 r=5 fill=white fill-opacity=0.8/>
+  <circle cx=72 cy=50 r=5 fill=white fill-opacity=0.8/>
+  <circle cx=50 cy=22 r=5 fill=white fill-opacity=0.8/>
+  <circle cx=50 cy=78 r=5 fill=white fill-opacity=0.8/>
+  
+  <!-- Connecting Graph Paths -->
+  <line x1=50 y1=22 x2=28 y2=50 stroke=white stroke-opacity=0.4 stroke-width=3 stroke-dasharray=3 3/>
+  <line x1=50 y1=22 x2=72 y2=50 stroke=white stroke-opacity=0.4 stroke-width=3 stroke-dasharray=3 3/>
+  <line x1=28 y1=50 x2=50 y2=78 stroke=white stroke-opacity=0.4 stroke-width=3 stroke-dasharray=3 3/>
+  <line x1=72 y1=50 x2=50 y2=78 stroke=white stroke-opacity=0.4 stroke-width=3 stroke-dasharray=3 3/>
+
+  <!-- Dynamic Energy Lightning / Dart Chevron in Center -->
+  <path d=M54 26 L34 54 L48 54 L44 76 L66 46 L52 46 Z fill=url(#boltGrad) filter=url(#glow)/>
+</svg>

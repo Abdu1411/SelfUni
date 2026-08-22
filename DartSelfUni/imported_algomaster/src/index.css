@@ -1,0 +1,231 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  code, pre, kbd, samp {
+    font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+/* Custom modern scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulseGlow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+/* Dart Syntax Highlighting in Light Mode */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: #64748b;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #ea580c;
+  font-weight: 600;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #059669;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #0284c7;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #7c3aed;
+  font-weight: 700;
+}
+
+.token.function,
+.token.class-name {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: #db2777;
+}
+
+.token.generics {
+  color: #0d9488;
+}
+
+.token.metadata {
+  color: #d97706;
+}
+
+/* VS Code Dark / Dart Syntax Highlighting in Code Editors */
+.bg-\[\#0d1117\] .token.comment,
+.bg-\[\#0d1117\] .token.prolog,
+.bg-\[\#0d1117\] .token.doctype,
+.bg-\[\#0d1117\] .token.cdata,
+.bg-slate-900 .token.comment,
+.bg-slate-900 .token.prolog,
+.bg-slate-900 .token.doctype,
+.bg-slate-900 .token.cdata {
+  color: #8b949e !important;
+  font-style: italic;
+}
+
+.bg-\[\#0d1117\] .token.punctuation,
+.bg-slate-900 .token.punctuation {
+  color: #c9d1d9 !important;
+}
+
+.bg-\[\#0d1117\] .token.property,
+.bg-\[\#0d1117\] .token.tag,
+.bg-\[\#0d1117\] .token.boolean,
+.bg-\[\#0d1117\] .token.number,
+.bg-\[\#0d1117\] .token.constant,
+.bg-\[\#0d1117\] .token.symbol,
+.bg-\[\#0d1117\] .token.deleted,
+.bg-slate-900 .token.property,
+.bg-slate-900 .token.tag,
+.bg-slate-900 .token.boolean,
+.bg-slate-900 .token.number,
+.bg-slate-900 .token.constant,
+.bg-slate-900 .token.symbol,
+.bg-slate-900 .token.deleted {
+  color: #ff7b72 !important;
+  font-weight: 600;
+}
+
+.bg-\[\#0d1117\] .token.selector,
+.bg-\[\#0d1117\] .token.attr-name,
+.bg-\[\#0d1117\] .token.string,
+.bg-\[\#0d1117\] .token.char,
+.bg-\[\#0d1117\] .token.builtin,
+.bg-\[\#0d1117\] .token.inserted,
+.bg-slate-900 .token.selector,
+.bg-slate-900 .token.attr-name,
+.bg-slate-900 .token.string,
+.bg-slate-900 .token.char,
+.bg-slate-900 .token.builtin,
+.bg-slate-900 .token.inserted {
+  color: #a5d6ff !important;
+}
+
+.bg-\[\#0d1117\] .token.operator,
+.bg-\[\#0d1117\] .token.entity,
+.bg-\[\#0d1117\] .token.url,
+.bg-slate-900 .token.operator,
+.bg-slate-900 .token.entity,
+.bg-slate-900 .token.url {
+  color: #79c0ff !important;
+}
+
+.bg-\[\#0d1117\] .token.atrule,
+.bg-\[\#0d1117\] .token.attr-value,
+.bg-\[\#0d1117\] .token.keyword,
+.bg-slate-900 .token.atrule,
+.bg-slate-900 .token.attr-value,
+.bg-slate-900 .token.keyword {
+  color: #ff7b72 !important;
+  font-weight: 700;
+}
+
+.bg-\[\#0d1117\] .token.function,
+.bg-\[\#0d1117\] .token.class-name,
+.bg-slate-900 .token.function,
+.bg-slate-900 .token.class-name {
+  color: #d2a8ff !important;
+  font-weight: 600;
+}
+
+.bg-\[\#0d1117\] .token.regex,
+.bg-\[\#0d1117\] .token.important,
+.bg-\[\#0d1117\] .token.variable,
+.bg-slate-900 .token.regex,
+.bg-slate-900 .token.important,
+.bg-slate-900 .token.variable {
+  color: #ffa657 !important;
+}
+
+.bg-\[\#0d1117\] .token.generics,
+.bg-slate-900 .token.generics {
+  color: #7ee787 !important;
+}
+
+/* KaTeX Math Block & Inline Styles */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.85rem 1.25rem;
+  margin: 1.25rem 0 !important;
+  border-radius: 1rem;
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.katex {
+  font-size: 1.06em;
+}
+
