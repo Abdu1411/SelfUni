@@ -314,7 +314,14 @@ Output JSON Schema:
     Please process and restructure the following raw video lecture transcript. The transcript contains inline timestamps in the format [MM:SS] representing the start time of the spoken content.
     
     1. Divide the content into logical sections and give every section a clear, descriptive header (e.g. ## Introduction, ## Memory Allocation, etc.).
-    2. Before every section header (and major subsection/paragraph), insert the closest corresponding timestamp from the raw transcript in the format `[MM:SS]` (e.g., `[05:23] ## Memory Allocation` or `[01:12] ## Introduction`).
+    2. Place the closest corresponding timestamp from the raw transcript on its own line immediately ABOVE every section header (and major subsection/paragraph), in the format `[MM:SS]` (e.g.:
+       [01:12]
+       ## Introduction
+       
+       or
+       
+       [05:23]
+       ## Memory Allocation). Do NOT place the timestamp on the same line as the header, as that breaks Markdown formatting.
     3. Rewrite, paraphrase, simplify, and explain the speech-to-text text so it reads like high-quality, professional educational notes. 
     4. Make it adhere strictly to Markdown style.
     5. If there is mathematical notation (like Big-O, algebra, equations, etc.), format it using formal LaTeX syntax (e.g. \$O(N \\log N)\$).
