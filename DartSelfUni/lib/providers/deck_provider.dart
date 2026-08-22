@@ -110,6 +110,14 @@ class DeckProvider extends ChangeNotifier {
   }
 
   Future<void> deleteDeck(String id) async {
+    final deck = _decks.where((d) => d.id == id).firstOrNull;
+    if (deck != null) {
+      final cardIdsToRemove = deck.cards.map((c) => c.id).toSet();
+      final univIdx = _decks.indexWhere((d) => d.id == 'universal');
+      if (univIdx != -1) {
+        _decks[univIdx].cards.removeWhere((c) => cardIdsToRemove.contains(c.id));
+      }
+    }
     _decks.removeWhere((d) => d.id == id);
     await _storageService.saveDecks(_decks);
     notifyListeners();
@@ -271,6 +279,14 @@ class DeckProvider extends ChangeNotifier {
       await _storageService.saveCourses(_courses);
     }
 
+    // Collect card IDs from all decks in this folder to remove from universal deck
+    final decksToDelete = _decks.where((d) => d.folderId == id).toList();
+    final cardIdsToRemove = decksToDelete.expand((d) => d.cards).map((c) => c.id).toSet();
+    final univIdx = _decks.indexWhere((d) => d.id == 'universal');
+    if (univIdx != -1 && cardIdsToRemove.isNotEmpty) {
+      _decks[univIdx].cards.removeWhere((c) => cardIdsToRemove.contains(c.id));
+    }
+
     if (deleteDecksInside) {
       _decks.removeWhere((d) => d.folderId == id);
       _lessons.removeWhere((l) => l.folderId == id);
@@ -400,6 +416,24 @@ class DeckProvider extends ChangeNotifier {
     if (course != null) {
       final courseTitle = course.title;
       final cleanCourseTitle = courseTitle.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+
+      final matchingFolderIds = {course.id};
+      if (deleteFolderToo) {
+        final matchingFolders = _folders.where((f) {
+          final cleanFolderName = f.name.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+          return f.id == id || cleanFolderName == cleanCourseTitle;
+        }).toList();
+        matchingFolderIds.addAll(matchingFolders.map((f) => f.id));
+      }
+
+      // Collect card IDs from all decks corresponding to these folders/courses to remove from universal deck
+      final decksToDelete = _decks.where((d) => d.folderId != null && matchingFolderIds.contains(d.folderId)).toList();
+      final cardIdsToRemove = decksToDelete.expand((d) => d.cards).map((c) => c.id).toSet();
+      final univIdx = _decks.indexWhere((d) => d.id == 'universal');
+      if (univIdx != -1 && cardIdsToRemove.isNotEmpty) {
+        _decks[univIdx].cards.removeWhere((c) => cardIdsToRemove.contains(c.id));
+      }
+
       if (deleteFolderToo) {
         final matchingFolders = _folders.where((f) {
           final cleanFolderName = f.name.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();

@@ -36,19 +36,31 @@ class _CourseViewerViewState extends State<CourseViewerView> {
   final Map<String, String> _transcriptErrors = {};
   final AIService _aiService = AIService();
 
-  Future<String?> _getOrFetchTranscript(String url) async {
+  String _cleanUrl(String url) {
+    var cleaned = url.trim();
+    while (cleaned.startsWith('"') || cleaned.startsWith("'")) {
+      cleaned = cleaned.substring(1);
+    }
+    while (cleaned.endsWith('"') || cleaned.endsWith("'")) {
+      cleaned = cleaned.substring(0, cleaned.length - 1);
+    }
+    return cleaned.trim();
+  }
+
+  Future<String?> _getOrFetchTranscript(String url, {bool force = false}) async {
+    final cleanedUrl = _cleanUrl(url);
     if (_activeItem == null) return null;
-    if (_activeItem!.transcript != null && _activeItem!.transcript!.isNotEmpty) {
+    if (!force && _activeItem!.transcript != null && _activeItem!.transcript!.isNotEmpty) {
       return _activeItem!.transcript;
     }
-    if (_transcriptCache.containsKey(url)) {
-      return _transcriptCache[url];
+    if (!force && _transcriptCache.containsKey(cleanedUrl)) {
+      return _transcriptCache[cleanedUrl];
     }
-    if (_transcriptErrors.containsKey(url)) {
+    if (!force && _transcriptErrors.containsKey(cleanedUrl)) {
       return null;
     }
     
-    final videoId = _extractYtVideoId(url);
+    final videoId = _extractYtVideoId(cleanedUrl);
     if (videoId.isEmpty) return null;
 
     try {
@@ -58,7 +70,7 @@ class _CourseViewerViewState extends State<CourseViewerView> {
       
       // AI processes raw transcript to add headers/paraphrasing/math formatting
       final formattedText = await _aiService.formatTranscript(rawTranscript: rawText);
-      _transcriptCache[url] = formattedText;
+      _transcriptCache[cleanedUrl] = formattedText;
       
       // Save it locally inside the CourseItem on the course object
       if (mounted) {
@@ -81,13 +93,14 @@ class _CourseViewerViewState extends State<CourseViewerView> {
       }
       return formattedText;
     } catch (e) {
-      _transcriptErrors[url] = e.toString();
+      _transcriptErrors[cleanedUrl] = e.toString();
       rethrow;
     }
   }
 
   String _extractYtVideoId(String url) {
-    final uri = Uri.tryParse(url.trim());
+    final cleaned = _cleanUrl(url);
+    final uri = Uri.tryParse(cleaned);
     if (uri != null) {
       if (uri.queryParameters.containsKey('v')) return uri.queryParameters['v']!;
       if (uri.host.contains('youtu.be') && uri.pathSegments.isNotEmpty) {
@@ -105,6 +118,20 @@ class _CourseViewerViewState extends State<CourseViewerView> {
     super.initState();
     if (widget.course.modules.isNotEmpty && widget.course.modules.first.items.isNotEmpty) {
       _activeItem = widget.course.modules.first.items.first;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CourseViewerView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_activeItem != null) {
+      for (var module in widget.course.modules) {
+        final newItem = module.items.where((i) => i.id == _activeItem!.id).firstOrNull;
+        if (newItem != null) {
+          _activeItem = newItem;
+          break;
+        }
+      }
     }
   }
 
@@ -151,13 +178,24 @@ class _CourseViewerViewState extends State<CourseViewerView> {
                 Navigator.of(ctx).pop();
                 final deckProvider = context.read<DeckProvider>();
                 
-                final updatedItem = CourseItem(
-                  id: item.id,
+                var updatedTranscript = item.transcript;
+                if (updatedTranscript != null && updatedTranscript.isNotEmpty) {
+                  final lines = updatedTranscript.split('\n');
+                  if (lines.isNotEmpty && lines.first.trimLeft().startsWith('#')) {
+                    final match = RegExp(r'^(#+)\s*').firstMatch(lines.first);
+                    if (match != null) {
+                      final hashes = match.group(1);
+                      lines[0] = '$hashes $newTitle';
+                    } else {
+                      lines[0] = '# $newTitle';
+                    }
+                    updatedTranscript = lines.join('\n');
+                  }
+                }
+
+                final updatedItem = item.copyWith(
                   title: newTitle,
-                  type: item.type,
-                  path: item.path,
-                  fileKey: item.fileKey,
-                  description: item.description,
+                  transcript: updatedTranscript,
                 );
                 
                 final itemIdx = module.items.indexWhere((i) => i.id == item.id);
@@ -397,6 +435,7 @@ class _CourseViewerViewState extends State<CourseViewerView> {
                                 onTap: () {
                                   setState(() {
                                     _activeItem = item;
+                                    _showTranscript = false;
                                   });
                                 },
                                 borderRadius: BorderRadius.circular(12),
@@ -715,7 +754,7 @@ class _CourseViewerViewState extends State<CourseViewerView> {
 
   Widget _buildContent(CourseItem item) {
     if (item.type == 'video') {
-      final url = item.path ?? item.fileKey ?? '';
+      final url = _cleanUrl(item.path ?? item.fileKey ?? '');
       if (url.contains('youtube.com') || url.contains('youtu.be')) {
         return Padding(
           padding: const EdgeInsets.all(24),
@@ -768,93 +807,170 @@ class _CourseViewerViewState extends State<CourseViewerView> {
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             ),
                           ),
-                        ],
-                      ),
-                      if (_showTranscript) ...[
-                        FutureBuilder<String?>(
-                          future: _getOrFetchTranscript(url),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 20),
-                                child: Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.primary)),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text('Loading transcript from YouTube...', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                  ],
-                                ),
-                              );
-                            }
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              if (url.isEmpty) return;
 
-                            final transcriptText = snapshot.data;
-                            if (transcriptText == null || transcriptText.isEmpty) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Subtitles/transcript not available for this YouTube video.',
-                                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                      ),
+                              final hasTranscript = _activeItem?.transcript != null && _activeItem!.transcript!.isNotEmpty;
+                              
+                              if (hasTranscript) {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    title: const Row(
+                                      children: [
+                                        Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                                        SizedBox(width: 8),
+                                        Text('Regenerate Transcript', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            return Container(
-                              margin: const EdgeInsets.only(top: 16),
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Row(
-                                        children: [
-                                          Icon(Icons.subtitles_outlined, size: 18, color: AppColors.primary),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Video Transcript',
-                                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                                          ),
-                                        ],
+                                    content: const Text('Are you sure you want to regenerate the transcript? This will overwrite the existing transcript.'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(ctx).pop(false),
+                                        child: const Text('Cancel'),
                                       ),
-                                      IconButton(
-                                        icon: const Icon(Icons.close, size: 18, color: AppColors.textSecondary),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                        onPressed: () {
-                                          setState(() {
-                                            _showTranscript = false;
-                                          });
-                                        },
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.of(ctx).pop(true),
+                                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning, foregroundColor: Colors.white),
+                                        child: const Text('Regenerate'),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 12),
-                                  MarkdownView(
-                                    data: transcriptText,
+                                );
+                                if (confirm != true) return;
+                              }
+
+                              if (!mounted) return;
+
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: Card(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(24.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircularProgressIndicator(),
+                                          SizedBox(height: 16),
+                                          Text('AI formatting transcript...', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                                ),
+                              );
+
+                              try {
+                                await _getOrFetchTranscript(url, force: true);
+                                if (!mounted) return;
+                                Navigator.of(context).pop(); // Close dialog
+                                
+                                setState(() {
+                                  _showTranscript = true;
+                                });
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(hasTranscript ? 'Transcript regenerated!' : 'Transcript generated!'),
+                                    backgroundColor: AppColors.success,
+                                  ),
+                                );
+                              } catch (e) {
+                                if (!mounted) return;
+                                Navigator.of(context).pop(); // Close dialog
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Failed to generate transcript: $e'), backgroundColor: AppColors.error),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.auto_awesome, size: 16),
+                            label: Text(
+                              _activeItem?.transcript != null && _activeItem!.transcript!.isNotEmpty
+                                  ? 'Regenerate Transcript'
+                                  : 'Generate Transcript',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_showTranscript) ...[
+                        if (_activeItem?.transcript != null && _activeItem!.transcript!.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(top: 16),
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.subtitles_outlined, size: 18, color: AppColors.primary),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Video Transcript',
+                                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                        ),
+                                      ],
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, size: 18, color: AppColors.textSecondary),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () {
+                                        setState(() {
+                                          _showTranscript = false;
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                MarkdownView(
+                                  data: _activeItem!.transcript!,
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Container(
+                            margin: const EdgeInsets.only(top: 16),
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEB),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFFDE68A)),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Color(0xFFB45309)),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'No transcript generated yet. Click "Generate Transcript" above to generate it.',
+                                    style: TextStyle(fontSize: 13, color: Color(0xFFB45309), fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ],
                   ),

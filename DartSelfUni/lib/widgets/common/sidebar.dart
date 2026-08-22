@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/deck_provider.dart';
 import '../../models/course_model.dart';
 import '../../views/custom_study_view.dart';
+import '../../views/study_session_view.dart';
 
 enum WorkspaceTab {
   dashboard,
@@ -40,14 +41,13 @@ class Sidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final deckProvider = context.watch<DeckProvider>();
     
-    // Calculate total due
+    // Calculate total due globally using the Universal Deck
     final now = DateTime.now().millisecondsSinceEpoch;
-    int totalDue = 0;
-    int totalCards = 0;
-    for (var deck in deckProvider.decks) {
-      totalCards += deck.cards.length;
-      totalDue += deck.cards.where((c) => c.nextReview <= now).length;
-    }
+    final universalCards = deckProvider.universalDeck?.cards ?? [];
+    final dueCardsList = universalCards.where((c) => c.nextReview <= now || c.reps == 0).toList();
+    dueCardsList.sort((a, b) => a.nextReview.compareTo(b.nextReview));
+    final totalDue = dueCardsList.length;
+    final totalCards = universalCards.length;
 
     final activeFolderIds = deckProvider.folders.map((f) => f.id).toSet();
     final activeCourseTitles = deckProvider.courses.map((c) => c.title.toLowerCase()).toSet();
@@ -405,7 +405,18 @@ class Sidebar extends StatelessWidget {
                     width: double.infinity,
                     height: 44,
                     child: ElevatedButton.icon(
-                      onPressed: totalDue > 0 ? () => onSelectTab(WorkspaceTab.decks) : null,
+                      onPressed: totalDue > 0
+                          ? () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => StudySessionView(
+                                    customSessionCards: dueCardsList,
+                                    title: 'Daily SRS Queue',
+                                  ),
+                                ),
+                              );
+                            }
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF3B5998),
                         foregroundColor: Colors.white,
