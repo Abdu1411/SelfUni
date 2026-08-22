@@ -14,6 +14,7 @@ class RichNoteEditor extends StatefulWidget {
   final VoidCallback? onSRS;
   final String? title;
   final bool showTimestamp;
+  final VoidCallback? onTap;
 
   const RichNoteEditor({
     super.key,
@@ -24,6 +25,7 @@ class RichNoteEditor extends StatefulWidget {
     this.onSRS,
     this.title,
     this.showTimestamp = true,
+    this.onTap,
   });
 
   @override
@@ -364,6 +366,7 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                           isDense: true,
                         ),
                         onChanged: _triggerAutoSave,
+                        onTap: widget.onTap,
                       ),
                     )
                   : SingleChildScrollView(

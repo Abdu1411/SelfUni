@@ -144,6 +144,15 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
     }
   }
 
+  void pause() {
+    if (_player != null && _isPlaying) {
+      _player!.pause();
+      if (widget.onPlayToggled != null) {
+        widget.onPlayToggled!();
+      }
+    }
+  }
+
   String _formatDuration(Duration d) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
     String twoDigitMinutes = twoDigits(d.inMinutes.remainder(60));

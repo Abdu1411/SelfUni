@@ -28,6 +28,7 @@ class LecturePlayerView extends StatefulWidget {
 }
 
 class _LecturePlayerViewState extends State<LecturePlayerView> {
+  final GlobalKey<AdaptiveVideoPlayerWidgetState> _videoPlayerKey = GlobalKey<AdaptiveVideoPlayerWidgetState>();
   bool _isPlaying = true;
   double _currentPositionSeconds = 120.0;
   bool _isGeneratingAICards = false;
@@ -519,7 +520,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               AdaptiveVideoPlayerWidget(
-                                key: ValueKey('player_${lecture.id}_${lecture.videoId}'),
+                                key: _videoPlayerKey,
                                 videoUrl: lecture.videoId.startsWith('http')
                                     ? lecture.videoId
                                     : 'https://www.youtube.com/watch?v=${lecture.videoId}',
@@ -663,6 +664,9 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                     },
                                     onExportToNotes: _openExportNoteModal,
                                     onSRS: _openSRSModal,
+                                    onTap: () {
+                                      _videoPlayerKey.currentState?.pause();
+                                    },
                                   ),
                                 ),
                               ),
@@ -685,7 +689,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                             children: [
                               // Adaptive Video Player Component
                               AdaptiveVideoPlayerWidget(
-                                key: ValueKey('player_${lecture.id}_${lecture.videoId}'),
+                                key: _videoPlayerKey,
                                 videoUrl: lecture.videoId.startsWith('http')
                                     ? lecture.videoId
                                     : 'https://www.youtube.com/watch?v=${lecture.videoId}',
@@ -831,6 +835,9 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                     },
                                     onExportToNotes: _openExportNoteModal,
                                     onSRS: _openSRSModal,
+                                    onTap: () {
+                                      _videoPlayerKey.currentState?.pause();
+                                    },
                                   ),
                                 ),
                               ),
