@@ -667,6 +667,9 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                     onTap: () {
                                       _videoPlayerKey.currentState?.pause();
                                     },
+                                    onTimestampRequested: () {
+                                      return _videoPlayerKey.currentState?.position ?? Duration.zero;
+                                    },
                                   ),
                                 ),
                               ),
@@ -837,6 +840,9 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                     onSRS: _openSRSModal,
                                     onTap: () {
                                       _videoPlayerKey.currentState?.pause();
+                                    },
+                                    onTimestampRequested: () {
+                                      return _videoPlayerKey.currentState?.position ?? Duration.zero;
                                     },
                                   ),
                                 ),

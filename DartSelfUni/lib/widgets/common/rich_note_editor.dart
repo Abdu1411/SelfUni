@@ -15,6 +15,7 @@ class RichNoteEditor extends StatefulWidget {
   final String? title;
   final bool showTimestamp;
   final VoidCallback? onTap;
+  final Duration Function()? onTimestampRequested;
 
   const RichNoteEditor({
     super.key,
@@ -26,6 +27,7 @@ class RichNoteEditor extends StatefulWidget {
     this.title,
     this.showTimestamp = true,
     this.onTap,
+    this.onTimestampRequested,
   });
 
   @override
@@ -77,6 +79,16 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
         });
       }
     });
+  }
+
+  String _formatTimestamp(Duration d) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    String twoDigitMinutes = twoDigits(d.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(d.inSeconds.remainder(60));
+    if (d.inHours > 0) {
+      return "${twoDigits(d.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+    }
+    return "$twoDigitMinutes:$twoDigitSeconds";
   }
 
   void _manualSave() {
@@ -330,7 +342,13 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                         avatar: const Icon(Icons.timer_outlined, size: 14, color: Colors.teal),
                         label: const Text('Timestamp'),
                         labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                        onPressed: () => _insertSnippet('\n⏱️ [00:00] - Note timestamp\n'),
+                        onPressed: () {
+                          final duration = widget.onTimestampRequested != null
+                              ? widget.onTimestampRequested!()
+                              : Duration.zero;
+                          final formatted = _formatTimestamp(duration);
+                          _insertSnippet('\n⏱️ [$formatted] - Note timestamp\n');
+                        },
                       ),
                     ],
                   ],

@@ -153,6 +153,8 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
     }
   }
 
+  Duration get position => _position;
+
   String _formatDuration(Duration d) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
     String twoDigitMinutes = twoDigits(d.inMinutes.remainder(60));
