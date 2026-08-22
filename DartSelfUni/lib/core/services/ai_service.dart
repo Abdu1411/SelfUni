@@ -311,12 +311,13 @@ Output JSON Schema:
   }) async {
     final systemPrompt = 'You are a professional educational editor. You rewrite, paraphrase, simplify, and organize raw speech-to-text transcripts into highly readable, textbook-grade markdown notes with clear titled sections, clean formatting, and formal LaTeX mathematical notation where appropriate.';
     final userPrompt = '''
-    Please process and restructure the following raw video lecture transcript.
+    Please process and restructure the following raw video lecture transcript. The transcript contains inline timestamps in the format [MM:SS] representing the start time of the spoken content.
     
     1. Divide the content into logical sections and give every section a clear, descriptive header (e.g. ## Introduction, ## Memory Allocation, etc.).
-    2. Rewrite, paraphrase, simplify, and explain the speech-to-text text so it reads like high-quality, professional educational notes. 
-    3. Make it adhere strictly to Markdown style.
-    4. If there is mathematical notation (like Big-O, algebra, equations, etc.), format it using formal LaTeX syntax (e.g. \$O(N \\log N)\$).
+    2. Before every section header (and major subsection/paragraph), insert the closest corresponding timestamp from the raw transcript in the format `[MM:SS]` (e.g., `[05:23] ## Memory Allocation` or `[01:12] ## Introduction`).
+    3. Rewrite, paraphrase, simplify, and explain the speech-to-text text so it reads like high-quality, professional educational notes. 
+    4. Make it adhere strictly to Markdown style.
+    5. If there is mathematical notation (like Big-O, algebra, equations, etc.), format it using formal LaTeX syntax (e.g. \$O(N \\log N)\$).
     
     RAW TRANSCRIPT:
     $rawTranscript

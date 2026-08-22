@@ -66,7 +66,16 @@ class _CourseViewerViewState extends State<CourseViewerView> {
     try {
       final api = YouTubeTranscriptApi();
       final transcript = await api.fetch(videoId);
-      final rawText = transcript.map((s) => s.text).join(' ');
+      
+      // Prepend start timestamp [MM:SS] to each subtitle segment
+      String rawText = '';
+      for (var segment in transcript) {
+        final startSeconds = (segment.start as num).toDouble();
+        final minutes = (startSeconds / 60).floor();
+        final seconds = (startSeconds % 60).floor();
+        final timestampStr = '[${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}]';
+        rawText += '$timestampStr ${segment.text} ';
+      }
       
       // AI processes raw transcript to add headers/paraphrasing/math formatting
       final formattedText = await _aiService.formatTranscript(rawTranscript: rawText);
