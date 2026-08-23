@@ -1,15 +1,11 @@
 import 'dart:io';
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/lesson_model.dart';
 import '../../providers/deck_provider.dart';
 import '../widgets/common/rich_note_editor.dart';
-import '../widgets/modals/folder_modal.dart';
 import '../widgets/common/pomodoro_timer_widget.dart';
 
 class PdfViewerView extends StatefulWidget {
@@ -35,6 +31,7 @@ class _PdfViewerViewState extends State<PdfViewerView> {
   int _pageCount = 0;
   double _zoomLevel = 1.0;
   bool _isSidebarOpen = true;
+  bool _isPdfVisible = true;
 
   @override
   void initState() {
@@ -78,104 +75,6 @@ class _PdfViewerViewState extends State<PdfViewerView> {
     );
   }
 
-  Future<void> _exportNotesToPdfDirectory() async {
-    try {
-      final updatedLesson = _activeLesson;
-      updatedLesson.content = _currentContent;
-      await context.read<DeckProvider>().updateLesson(updatedLesson);
-
-      if (_currentContent.trim().isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('⚠️ Cannot export empty notes. Please write something first!'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-        return;
-      }
-
-      final sanitizeTitle = _activeLesson.title
-          .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
-          .trim();
-
-      File? targetFile;
-
-      if (_activeLesson.pdfUrl != null && _activeLesson.pdfUrl!.isNotEmpty) {
-        final pdfFile = File(_activeLesson.pdfUrl!);
-        final parentDir = pdfFile.parent;
-        if (await parentDir.exists()) {
-          targetFile = File('${parentDir.path}/$sanitizeTitle.md');
-          await targetFile.writeAsString(_currentContent);
-        }
-      }
-
-      if (targetFile == null) {
-        final bytes = Uint8List.fromList(utf8.encode(_currentContent));
-        final Uri? selectedUri = await FilePicker.saveFile(
-          dialogTitle: 'Select Target Export File (Obligatory)',
-          fileName: '$sanitizeTitle.md',
-          type: FileType.custom,
-          allowedExtensions: ['md', 'markdown', 'txt'],
-          bytes: bytes,
-        );
-
-        if (selectedUri == null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('⚠️ Export cancelled: A target file is obligatory to provide.'),
-                backgroundColor: Colors.amber,
-              ),
-            );
-          }
-          return;
-        }
-
-        final String filePath = selectedUri.isScheme('file') ? selectedUri.toFilePath() : selectedUri.path;
-        targetFile = File(filePath);
-        if (!await targetFile.exists() || (await targetFile.length()) == 0) {
-          await targetFile.writeAsBytes(bytes);
-        }
-      }
-
-      if (mounted) {
-        final fileName = targetFile.uri.pathSegments.isNotEmpty
-            ? targetFile.uri.pathSegments.last
-            : targetFile.path;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('📄 Note exported successfully to "$fileName" in PDF folder!'),
-            backgroundColor: AppColors.success,
-            action: SnackBarAction(
-              label: 'Open Folder',
-              textColor: Colors.white,
-              onPressed: () {
-                if (Platform.isWindows && targetFile!.parent.existsSync()) {
-                  Process.run('explorer.exe', [targetFile.parent.path]);
-                } else if (Platform.isMacOS && targetFile!.parent.existsSync()) {
-                  Process.run('open', [targetFile.parent.path]);
-                } else if (Platform.isLinux && targetFile!.parent.existsSync()) {
-                  Process.run('xdg-open', [targetFile.parent.path]);
-                }
-              },
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error exporting note: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final allLessons = context.watch<DeckProvider>().lessons;
@@ -213,13 +112,16 @@ class _PdfViewerViewState extends State<PdfViewerView> {
           const SizedBox(width: 8),
           IconButton(
             icon: Icon(_isSidebarOpen ? Icons.view_sidebar : Icons.view_sidebar_outlined, color: AppColors.textSecondary),
-            tooltip: _isSidebarOpen ? 'Hide Documents' : 'Show Documents',
+            tooltip: _isSidebarOpen ? 'Hide Documents Sidebar' : 'Show Documents Sidebar',
             onPressed: () => setState(() => _isSidebarOpen = !_isSidebarOpen),
           ),
           IconButton(
-            icon: const Icon(Icons.file_download_outlined, color: AppColors.primary),
-            tooltip: 'Export Notes to PDF Directory',
-            onPressed: _exportNotesToPdfDirectory,
+            icon: Icon(
+              _isPdfVisible ? Icons.menu_book : Icons.menu_book_outlined,
+              color: _isPdfVisible ? AppColors.primary : const Color(0xFF64748B),
+            ),
+            tooltip: _isPdfVisible ? 'Hide Document (Full Screen Notes)' : 'Show Document',
+            onPressed: () => setState(() => _isPdfVisible = !_isPdfVisible),
           ),
           const SizedBox(width: 12),
         ],
@@ -323,103 +225,104 @@ class _PdfViewerViewState extends State<PdfViewerView> {
             ),
 
           // PDF Viewer Pane
-          Expanded(
-            flex: 4,
-            child: Container(
-              decoration: const BoxDecoration(
-                border: Border(right: BorderSide(color: AppColors.border)),
-              ),
-              child: _activeLesson.pdfUrl != null
-                  ? Stack(
-                      children: [
-                        SfPdfViewer.file(
-                          File(_activeLesson.pdfUrl!),
-                          key: ValueKey('pdf_viewer_${_activeLesson.id}'),
-                          controller: _pdfViewerController,
-                          onDocumentLoaded: (PdfDocumentLoadedDetails details) {
-                            setState(() {
-                              _pageCount = details.document.pages.count;
-                              _currentPage = _pdfViewerController.pageNumber;
-                            });
-                          },
-                          onPageChanged: (PdfPageChangedDetails details) {
-                            setState(() {
-                              _currentPage = details.newPageNumber;
-                            });
-                          },
-                          onZoomLevelChanged: (PdfZoomDetails details) {
-                            setState(() {
-                              _zoomLevel = details.newZoomLevel;
-                            });
-                          },
-                        ),
-                        // PDF Controls Toolbar Overlay
-                        Positioned(
-                          bottom: 16,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.7),
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.2),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.zoom_out, color: Colors.white, size: 20),
-                                    onPressed: () {
-                                      _pdfViewerController.zoomLevel = (_zoomLevel - 0.25).clamp(0.5, 3.0);
-                                    },
-                                  ),
-                                  Text(
-                                    '${(_zoomLevel * 100).toInt()}%',
-                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.zoom_in, color: Colors.white, size: 20),
-                                    onPressed: () {
-                                      _pdfViewerController.zoomLevel = (_zoomLevel + 0.25).clamp(0.5, 3.0);
-                                    },
-                                  ),
-                                  Container(width: 1, height: 24, color: Colors.white38, margin: const EdgeInsets.symmetric(horizontal: 8)),
-                                  IconButton(
-                                    icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white, size: 20),
-                                    onPressed: () {
-                                      _pdfViewerController.previousPage();
-                                    },
-                                  ),
-                                  Text(
-                                    '$_currentPage / ${_pageCount > 0 ? _pageCount : "-"}',
-                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
-                                    onPressed: () {
-                                      _pdfViewerController.nextPage();
-                                    },
-                                  ),
-                                ],
+          if (_isPdfVisible)
+            Expanded(
+              flex: 4,
+              child: Container(
+                decoration: const BoxDecoration(
+                  border: Border(right: BorderSide(color: AppColors.border)),
+                ),
+                child: _activeLesson.pdfUrl != null
+                    ? Stack(
+                        children: [
+                          SfPdfViewer.file(
+                            File(_activeLesson.pdfUrl!),
+                            key: ValueKey('pdf_viewer_${_activeLesson.id}'),
+                            controller: _pdfViewerController,
+                            onDocumentLoaded: (PdfDocumentLoadedDetails details) {
+                              setState(() {
+                                _pageCount = details.document.pages.count;
+                                _currentPage = _pdfViewerController.pageNumber;
+                              });
+                            },
+                            onPageChanged: (PdfPageChangedDetails details) {
+                              setState(() {
+                                _currentPage = details.newPageNumber;
+                              });
+                            },
+                            onZoomLevelChanged: (PdfZoomDetails details) {
+                              setState(() {
+                                _zoomLevel = details.newZoomLevel;
+                              });
+                            },
+                          ),
+                          // PDF Controls Toolbar Overlay
+                          Positioned(
+                            bottom: 16,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(24),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.zoom_out, color: Colors.white, size: 20),
+                                      onPressed: () {
+                                        _pdfViewerController.zoomLevel = (_zoomLevel - 0.25).clamp(0.5, 3.0);
+                                      },
+                                    ),
+                                    Text(
+                                      '${(_zoomLevel * 100).toInt()}%',
+                                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.zoom_in, color: Colors.white, size: 20),
+                                      onPressed: () {
+                                        _pdfViewerController.zoomLevel = (_zoomLevel + 0.25).clamp(0.5, 3.0);
+                                      },
+                                    ),
+                                    Container(width: 1, height: 24, color: Colors.white38, margin: const EdgeInsets.symmetric(horizontal: 8)),
+                                    IconButton(
+                                      icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white, size: 20),
+                                      onPressed: () {
+                                        _pdfViewerController.previousPage();
+                                      },
+                                    ),
+                                    Text(
+                                      '$_currentPage / ${_pageCount > 0 ? _pageCount : "-"}',
+                                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
+                                      onPressed: () {
+                                        _pdfViewerController.nextPage();
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    )
-                  : const Center(
-                      child: Text('PDF not found'),
-                    ),
+                        ],
+                      )
+                    : const Center(
+                        child: Text('PDF not found'),
+                      ),
+              ),
             ),
-          ),
           
           // Notes Pane
           Expanded(
@@ -432,7 +335,6 @@ class _PdfViewerViewState extends State<PdfViewerView> {
               },
               title: 'PDF Notes',
               onSave: _saveNotes,
-              onCustomExport: _exportNotesToPdfDirectory,
               showTimestamp: false,
             ),
           ),
