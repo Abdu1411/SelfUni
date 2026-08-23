@@ -167,6 +167,7 @@ class DeckProvider extends ChangeNotifier {
   }
 
   Future<void> purgeOrphanedData() async {
+    if (_isLoading || _folders.isEmpty) return;
     final activeFolderIds = _folders.map((f) => f.id).toSet();
     
     // Clean up decks whose folderId is no longer in active folders

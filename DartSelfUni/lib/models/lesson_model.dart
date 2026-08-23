@@ -69,12 +69,12 @@ class Lesson {
 
   factory Lesson.fromJson(Map<String, dynamic> json) {
     return Lesson(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      topic: json['topic'] as String,
+      id: json['id'] as String? ?? 'lesson_${DateTime.now().millisecondsSinceEpoch}',
+      title: json['title'] as String? ?? 'Untitled Note',
+      topic: json['topic'] as String? ?? 'General',
       sourceUrl: json['sourceUrl'] as String?,
-      sources: (json['sources'] as List<dynamic>?)?.map((e) => e as String).toList(),
-      content: json['content'] as String,
+      sources: (json['sources'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
+      content: json['content'] as String? ?? '',
       folderId: json['folderId'] as String?,
       createdAt: json['createdAt'] as int?,
       videoUrl: json['videoUrl'] as String?,

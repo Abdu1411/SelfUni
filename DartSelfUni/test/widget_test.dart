@@ -564,6 +564,35 @@ void traverse() {
 
       // Verify folders include the course
       expect(provider.folders.any((f) => f.name == 'Distributed Systems 101'), isTrue);
+
+      // Verify creating a custom note in custom folder "Abs" persists across restart
+      await provider.addFolder('Abs', color: '#10B981');
+      final absFolder = provider.folders.firstWhere((f) => f.name == 'Abs');
+
+      final note = Lesson(
+        id: 'note_as_123',
+        title: 'as',
+        topic: 'Abs',
+        content: '# Chapter 1: Mathematical Reasoning\n\nMathematics extends beyond calculation...',
+        folderId: absFolder.id,
+        isNote: true,
+      );
+
+      await provider.addLesson(note);
+
+      // Simulate restarting the app completely
+      final restartedProvider = DeckProvider();
+      while (restartedProvider.isLoading) {
+        await Future.delayed(const Duration(milliseconds: 20));
+      }
+
+      // Verify custom folder and note persist
+      expect(restartedProvider.folders.any((f) => f.name == 'Abs'), isTrue);
+      final persistedNote = restartedProvider.lessons.where((l) => l.title == 'as').firstOrNull;
+      expect(persistedNote, isNotNull);
+      expect(persistedNote!.topic, equals('Abs'));
+      expect(persistedNote.content, contains('Chapter 1: Mathematical Reasoning'));
+      expect(persistedNote.isNote, isTrue);
     });
   });
 

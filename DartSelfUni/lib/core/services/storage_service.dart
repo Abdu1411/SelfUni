@@ -74,20 +74,29 @@ class StorageService {
   // --- Folders ---
   Future<List<Folder>> loadFolders() async {
     try {
+      String? contents;
       if (kIsWeb) {
         final prefs = await SharedPreferences.getInstance();
-        final contents = prefs.getString(foldersFile);
-        if (contents != null) {
-          final List<dynamic> jsonList = jsonDecode(contents);
-          return jsonList.map((e) => Folder.fromJson(e as Map<String, dynamic>)).toList();
-        }
+        contents = prefs.getString(foldersFile);
       } else {
         final file = await _getLocalFile(foldersFile);
         if (await file.exists()) {
-          final contents = await file.readAsString();
-          final List<dynamic> jsonList = jsonDecode(contents);
-          return jsonList.map((e) => Folder.fromJson(e as Map<String, dynamic>)).toList();
+          contents = await file.readAsString();
         }
+      }
+      if (contents != null && contents.trim().isNotEmpty) {
+        final List<dynamic> jsonList = jsonDecode(contents);
+        final List<Folder> folders = [];
+        for (final item in jsonList) {
+          if (item is Map<String, dynamic>) {
+            try {
+              folders.add(Folder.fromJson(item));
+            } catch (err) {
+              print('Error parsing individual folder: $err');
+            }
+          }
+        }
+        return folders;
       }
     } catch (e) {
       print('Error loading folders: $e');
@@ -114,20 +123,29 @@ class StorageService {
   // --- Lessons ---
   Future<List<Lesson>> loadLessons() async {
     try {
+      String? contents;
       if (kIsWeb) {
         final prefs = await SharedPreferences.getInstance();
-        final contents = prefs.getString(lessonsFile);
-        if (contents != null) {
-          final List<dynamic> jsonList = jsonDecode(contents);
-          return jsonList.map((e) => Lesson.fromJson(e as Map<String, dynamic>)).toList();
-        }
+        contents = prefs.getString(lessonsFile);
       } else {
         final file = await _getLocalFile(lessonsFile);
         if (await file.exists()) {
-          final contents = await file.readAsString();
-          final List<dynamic> jsonList = jsonDecode(contents);
-          return jsonList.map((e) => Lesson.fromJson(e as Map<String, dynamic>)).toList();
+          contents = await file.readAsString();
         }
+      }
+      if (contents != null && contents.trim().isNotEmpty) {
+        final List<dynamic> jsonList = jsonDecode(contents);
+        final List<Lesson> lessons = [];
+        for (final item in jsonList) {
+          if (item is Map<String, dynamic>) {
+            try {
+              lessons.add(Lesson.fromJson(item));
+            } catch (err) {
+              print('Error parsing individual lesson: $err');
+            }
+          }
+        }
+        return lessons;
       }
     } catch (e) {
       print('Error loading lessons: $e');

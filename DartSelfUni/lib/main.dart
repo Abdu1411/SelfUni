@@ -80,9 +80,6 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DeckProvider>().purgeOrphanedData();
-    });
   }
 
   void _handleTabSelected(WorkspaceTab tab) {
