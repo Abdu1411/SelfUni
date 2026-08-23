@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/deck_provider.dart';
 import '../../models/lesson_model.dart';
 import '../../models/folder_model.dart';
 import '../widgets/modals/folder_modal.dart';
 import '../widgets/modals/move_resource_modal.dart';
+import '../widgets/modals/create_note_modal.dart';
 import 'lesson_detail_view.dart';
 import 'pdf_viewer_view.dart';
 
@@ -188,6 +190,54 @@ class _LessonsViewState extends State<LessonsView> {
           ));
         }
       }
+    }
+  }
+
+  Future<void> _handleCreateNote() async {
+    if (!mounted) return;
+    
+    final result = await CreateNoteModal.show(
+      context,
+      initialFolderId: _activeFolderId,
+    );
+
+    if (result == null) return;
+
+    final title = result['title'] as String;
+    final topic = result['topic'] as String;
+    final folderId = result['folderId'] as String;
+
+    final deckProvider = context.read<DeckProvider>();
+    final newId = 'note_${const Uuid().v4()}';
+    
+    final newLesson = Lesson(
+      id: newId,
+      title: title,
+      topic: topic,
+      content: '# $title\n\nStart writing your notes here...',
+      folderId: folderId,
+      isNote: true,
+    );
+
+    await deckProvider.addLesson(newLesson);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Note "$title" created successfully!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => LessonDetailView(
+            lesson: newLesson,
+            isEditing: true,
+            onNavigateBack: () => Navigator.of(context).maybePop(),
+          ),
+        ),
+      );
     }
   }
 
@@ -431,6 +481,19 @@ class _LessonsViewState extends State<LessonsView> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
+                      onPressed: _handleCreateNote,
+                      icon: const Icon(Icons.note_add, size: 18),
+                      label: const Text('CREATE NOTE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4F46E5),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        elevation: 0,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
                       onPressed: _handleImportPdf,
                       icon: const Icon(Icons.picture_as_pdf, size: 18),
                       label: const Text('IMPORT PDFS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
@@ -461,47 +524,52 @@ class _LessonsViewState extends State<LessonsView> {
           ),
           if (isMobile) ...[
             const SizedBox(height: 16),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _openNewFolderModal(context),
-                    icon: const Icon(Icons.create_new_folder, size: 16),
-                    label: const Text('FOLDER', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF3B82F6),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
+                ElevatedButton.icon(
+                  onPressed: () => _openNewFolderModal(context),
+                  icon: const Icon(Icons.create_new_folder, size: 16),
+                  label: const Text('FOLDER', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _handleImportPdf,
-                    icon: const Icon(Icons.picture_as_pdf, size: 18),
-                    label: const Text('IMPORT PDFS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE11D48),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
+                ElevatedButton.icon(
+                  onPressed: _handleCreateNote,
+                  icon: const Icon(Icons.note_add, size: 16),
+                  label: const Text('NOTE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F46E5),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: widget.onNavigateToLessonGenerator,
-                    icon: const Icon(Icons.auto_awesome, size: 18),
-                    label: const Text('GENERATE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
+                ElevatedButton.icon(
+                  onPressed: _handleImportPdf,
+                  icon: const Icon(Icons.picture_as_pdf, size: 16),
+                  label: const Text('IMPORT PDFS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE11D48),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: widget.onNavigateToLessonGenerator,
+                  icon: const Icon(Icons.auto_awesome, size: 16),
+                  label: const Text('GENERATE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ],

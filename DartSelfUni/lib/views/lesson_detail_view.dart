@@ -20,11 +20,13 @@ import 'study_session_view.dart';
 class LessonDetailView extends StatefulWidget {
   final Lesson lesson;
   final VoidCallback onNavigateBack;
+  final bool isEditing;
 
   const LessonDetailView({
     super.key,
     required this.lesson,
     required this.onNavigateBack,
+    this.isEditing = false,
   });
 
   @override
@@ -32,7 +34,7 @@ class LessonDetailView extends StatefulWidget {
 }
 
 class _LessonDetailViewState extends State<LessonDetailView> {
-  bool _isEditing = false;
+  late bool _isEditing;
   bool _isGeneratingCards = false;
   bool _isAiModalOpen = false;
   final ScrollController _scrollController = ScrollController();
@@ -40,6 +42,7 @@ class _LessonDetailViewState extends State<LessonDetailView> {
   @override
   void initState() {
     super.initState();
+    _isEditing = widget.isEditing;
     // Set as active context for AI Tutor
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ActiveViewProvider>().setActiveResource(
@@ -459,17 +462,20 @@ class _LessonDetailViewState extends State<LessonDetailView> {
       body: Stack(
         children: [
           _isEditing
-              ? Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: RichNoteEditor(
-                    initialContent: widget.lesson.content,
-                    title: widget.lesson.title,
-                    onChanged: (newContent) {
-                      widget.lesson.content = newContent;
-                      context.read<DeckProvider>().updateLesson(widget.lesson);
-                    },
-                    onSave: () => setState(() => _isEditing = false),
-                    showTimestamp: widget.lesson.pdfUrl == null,
+              ? Center(
+                  child: Container(
+                    width: isMobile ? double.infinity : screenWidth * 0.7,
+                    padding: const EdgeInsets.all(24.0),
+                    child: RichNoteEditor(
+                      initialContent: widget.lesson.content,
+                      title: widget.lesson.title,
+                      onChanged: (newContent) {
+                        widget.lesson.content = newContent;
+                        context.read<DeckProvider>().updateLesson(widget.lesson);
+                      },
+                      onSave: () => setState(() => _isEditing = false),
+                      showTimestamp: widget.lesson.pdfUrl == null,
+                    ),
                   ),
                 )
               : Row(
@@ -477,7 +483,7 @@ class _LessonDetailViewState extends State<LessonDetailView> {
                   children: [
                     // Main content
                     Expanded(
-                      flex: 3,
+                      flex: 7,
                       child: SingleChildScrollView(
                         controller: _scrollController,
                         padding: EdgeInsets.symmetric(
@@ -486,7 +492,7 @@ class _LessonDetailViewState extends State<LessonDetailView> {
                         ),
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 860),
+                            constraints: const BoxConstraints(maxWidth: double.infinity),
                             child: Container(
                               padding: EdgeInsets.all(isMobile ? 20.0 : 40.0),
                               decoration: BoxDecoration(
@@ -650,8 +656,9 @@ class _LessonDetailViewState extends State<LessonDetailView> {
               
                     // Outline / Quick Actions Sidebar (Desktop)
                     if (!isMobile)
-                      Container(
-                        width: 280,
+                      Expanded(
+                        flex: 3,
+                        child: Container(
                         decoration: const BoxDecoration(
                           color: Colors.white,
                           border: Border(left: BorderSide(color: AppColors.border)),
@@ -749,6 +756,7 @@ class _LessonDetailViewState extends State<LessonDetailView> {
                           ],
                         ),
                       ),
+                    ),
                   ],
                 ),
 

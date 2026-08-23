@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/deck_provider.dart';
 import '../../models/course_model.dart';
@@ -1094,14 +1096,30 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
                     const SizedBox(height: 28),
                     const Divider(color: Color(0xFFE2E8F0)),
                     const SizedBox(height: 16),
-                    const Text(
-                      'CUSTOM STYLING CONTROLS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF94A3B8),
-                        letterSpacing: 0.8,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'CUSTOM STYLING CONTROLS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF94A3B8),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _importStylesFromCssFile,
+                          icon: const Icon(Icons.file_open, size: 14),
+                          label: const Text('Import CSS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF2563EB),
+                            side: const BorderSide(color: Color(0xFFBFDBFE)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 20),
 
@@ -1155,10 +1173,10 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
                           ],
                         ),
                         Slider(
-                          value: double.tryParse(_customStyles['font_size'] ?? '16') ?? 16.0,
+                          value: (double.tryParse(_customStyles['font_size'] ?? '16') ?? 16.0).clamp(12.0, 36.0),
                           min: 12.0,
-                          max: 24.0,
-                          divisions: 12,
+                          max: 36.0,
+                          divisions: 24,
                           activeColor: const Color(0xFF2563EB),
                           inactiveColor: const Color(0xFFE2E8F0),
                           onChanged: (val) {
@@ -1298,5 +1316,235 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
         ),
       ],
     );
+  }
+
+  Future<void> _importStylesFromCssFile() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['css'],
+      );
+
+      if (result.isNotEmpty && result.first.path != null) {
+        final file = File(result.first.path!);
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          final parsed = parseCssToThemeStyles(content);
+          
+          if (parsed.isEmpty) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('⚠️ No valid style rules (e.g. background-color, color) found in the selected CSS file.'),
+                  backgroundColor: Colors.amber,
+                ),
+              );
+            }
+            return;
+          }
+
+          setState(() {
+            _selectedTheme = 'Custom Theme';
+            parsed.forEach((key, val) {
+              _customStyles[key] = val;
+            });
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('🎨 Styles imported successfully from CSS file!'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error importing CSS: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  String stripMediaQueries(String css) {
+    final buffer = StringBuffer();
+    int i = 0;
+    while (i < css.length) {
+      if (i < css.length - 6 && css.substring(i, i + 6) == '@media') {
+        // Find the start of the media query block
+        int braceCount = 0;
+        int j = i;
+        while (j < css.length) {
+          if (css[j] == '{') {
+            braceCount++;
+            j++;
+            break;
+          }
+          j++;
+        }
+        // Consume nested blocks until the media query's closing brace is found
+        while (j < css.length && braceCount > 0) {
+          if (css[j] == '{') {
+            braceCount++;
+          } else if (css[j] == '}') {
+            braceCount--;
+          }
+          j++;
+        }
+        i = j;
+      } else {
+        buffer.write(css[i]);
+        i++;
+      }
+    }
+    return buffer.toString();
+  }
+
+  Map<String, String> parseCssToThemeStyles(String cssContent) {
+    final Map<String, String> styles = {};
+    
+    // 1. Clean comments
+    var cleanCss = cssContent.replaceAll(RegExp(r'\/\*[\s\S]*?\*\/'), '');
+    
+    // 2. Strip media queries to ignore overrides (like print or mobile rules)
+    cleanCss = stripMediaQueries(cleanCss);
+    
+    // 3. Parse selector blocks, e.g. body { ... }
+    final blockRegex = RegExp(r'([^{]+)\{([^}]+)\}');
+    final matches = blockRegex.allMatches(cleanCss);
+    
+    final Map<String, String> variables = {};
+    final List<Map<String, dynamic>> parsedBlocks = [];
+    
+    for (final match in matches) {
+      final selectors = match.group(1)!.trim().toLowerCase();
+      final declarations = match.group(2)!.trim();
+      
+      // Parse declaration list, e.g. background-color: #ffffff; color: #333;
+      final decRegex = RegExp(r'([^:]+):([^;]+);?');
+      final decMatches = decRegex.allMatches(declarations);
+      
+      final Map<String, String> ruleMap = {};
+      for (final decMatch in decMatches) {
+        final key = decMatch.group(1)!.trim();
+        final val = decMatch.group(2)!.trim();
+        ruleMap[key] = val;
+        
+        // If it's a CSS variable declaration (starts with --)
+        if (key.startsWith('--')) {
+          variables[key] = val;
+        }
+      }
+      
+      parsedBlocks.add({
+        'selectors': selectors,
+        'rules': ruleMap,
+      });
+    }
+    
+    // Helper to resolve var(--variable-name) in values
+    String resolveValue(String val) {
+      var resolved = val;
+      final varRegex = RegExp(r'var\((--[^)]+)\)');
+      var match = varRegex.firstMatch(resolved);
+      int iterations = 0;
+      // Loop to resolve nested vars up to 5 levels
+      while (match != null && iterations < 5) {
+        final varName = match.group(1)!.trim();
+        if (variables.containsKey(varName)) {
+          resolved = resolved.replaceFirst(match.group(0)!, variables[varName]!);
+        } else {
+          break;
+        }
+        match = varRegex.firstMatch(resolved);
+        iterations++;
+      }
+      return resolved;
+    }
+    
+    // 4. Extract styles from parsed blocks
+    for (final block in parsedBlocks) {
+      final selectors = block['selectors'] as String;
+      final ruleMap = block['rules'] as Map<String, String>;
+      
+      // Resolve variables in this block's rules
+      final resolvedRules = <String, String>{};
+      ruleMap.forEach((k, v) {
+        resolvedRules[k] = resolveValue(v);
+      });
+      
+      // If selector contains 'body' or 'html'
+      if (selectors.contains('body') || selectors.contains('html')) {
+        if (resolvedRules.containsKey('background-color')) {
+          final bg = _extractHexColor(resolvedRules['background-color']!);
+          if (bg != null) styles['bg'] = bg;
+        } else if (resolvedRules.containsKey('background')) {
+          final bg = _extractHexColor(resolvedRules['background']!);
+          if (bg != null) styles['bg'] = bg;
+        }
+        if (resolvedRules.containsKey('color')) {
+          final text = _extractHexColor(resolvedRules['color']!);
+          if (text != null) styles['text'] = text;
+        }
+        if (resolvedRules.containsKey('font-size')) {
+          final fontSizeStr = RegExp(r'(\d+)').firstMatch(resolvedRules['font-size']!)?.group(1);
+          if (fontSizeStr != null) {
+            final fs = double.tryParse(fontSizeStr);
+            if (fs != null) {
+              styles['font_size'] = fs.clamp(12.0, 36.0).round().toString();
+            }
+          }
+        }
+      }
+      
+      // If selector contains 'a' (specifically 'a' or 'a:link' etc.)
+      if (selectors.split(',').any((s) => s.trim() == 'a' || s.trim().startsWith('a:'))) {
+        if (resolvedRules.containsKey('color')) {
+          final link = _extractHexColor(resolvedRules['color']!);
+          if (link != null) styles['link'] = link;
+        }
+      }
+      
+      // If selector contains border colors
+      if (selectors.contains('h1') || selectors.contains('h2') || selectors.contains('hr') || selectors.contains('.border') || selectors.contains('border')) {
+        if (resolvedRules.containsKey('border-color')) {
+          final border = _extractHexColor(resolvedRules['border-color']!);
+          if (border != null) styles['border'] = border;
+        } else if (resolvedRules.containsKey('border-bottom-color')) {
+          final border = _extractHexColor(resolvedRules['border-bottom-color']!);
+          if (border != null) styles['border'] = border;
+        } else if (resolvedRules.containsKey('border')) {
+          final hex = _extractHexColor(resolvedRules['border']!);
+          if (hex != null) styles['border'] = hex;
+        } else if (resolvedRules.containsKey('border-bottom')) {
+          final hex = _extractHexColor(resolvedRules['border-bottom']!);
+          if (hex != null) styles['border'] = hex;
+        }
+      }
+    }
+    
+    return styles;
+  }
+
+  String? _extractHexColor(String cssValue) {
+    final hexRegex = RegExp(r'#([0-9a-fA-F]{3,8})');
+    final hexMatch = hexRegex.firstMatch(cssValue);
+    if (hexMatch != null) {
+      String hex = hexMatch.group(0)!;
+      if (hex.length == 4) {
+        final r = hex[1];
+        final g = hex[2];
+        final b = hex[3];
+        return '#$r$r$g$g$b$b';
+      }
+      return hex;
+    }
+    return null;
   }
 }

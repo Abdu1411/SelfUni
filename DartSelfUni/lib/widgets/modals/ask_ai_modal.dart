@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../../providers/active_view_provider.dart';
 import '../../providers/deck_provider.dart';
@@ -18,7 +17,7 @@ class AskAiModal extends StatefulWidget {
 class _AskAiModalState extends State<AskAiModal> {
   final TextEditingController _promptController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
+
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
 
@@ -28,17 +27,19 @@ class _AskAiModalState extends State<AskAiModal> {
     // In a real implementation, we would greet the user based on the context
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final activeResource = context.read<ActiveViewProvider>().activeResource;
-      
+
       setState(() {
         if (activeResource != null) {
           _messages.add({
             'role': 'assistant',
-            'content': 'I see you are looking at "${activeResource.title}". How can I help you with this material?',
+            'content':
+                'I see you are looking at "${activeResource.title}". How can I help you with this material?',
           });
         } else {
           _messages.add({
             'role': 'assistant',
-            'content': 'Hello! I am your AI Tutor. How can I help you study today?',
+            'content':
+                'Hello! I am your AI Tutor. How can I help you study today?',
           });
         }
       });
@@ -54,38 +55,32 @@ class _AskAiModalState extends State<AskAiModal> {
 
   void _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
-    
+
     setState(() {
       _messages.add({'role': 'user', 'content': text});
       _isLoading = true;
     });
-    
+
     _promptController.clear();
     _scrollToBottom();
-    
+
     try {
       final activeResource = context.read<ActiveViewProvider>().activeResource;
-      
+
       final response = await AIService().chat(
         history: _messages,
         contextText: activeResource?.contextText,
       );
-      
+
       if (mounted) {
         setState(() {
-          _messages.add({
-            'role': 'assistant',
-            'content': response,
-          });
+          _messages.add({'role': 'assistant', 'content': response});
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _messages.add({
-            'role': 'assistant',
-            'content': 'Error: $e',
-          });
+          _messages.add({'role': 'assistant', 'content': 'Error: $e'});
         });
       }
     } finally {
@@ -150,9 +145,15 @@ class _AskAiModalState extends State<AskAiModal> {
     } else {
       bg = _parseHexColor(custom['bg'] ?? '#ffffff', const Color(0xFFFFFFFF));
       fg = _parseHexColor(custom['text'] ?? '#24292f', const Color(0xFF24292F));
-      border = _parseHexColor(custom['border'] ?? '#d0d7de', const Color(0xFFD0D7DE));
+      border = _parseHexColor(
+        custom['border'] ?? '#d0d7de',
+        const Color(0xFFD0D7DE),
+      );
       canvasSubtle = bg.withValues(alpha: 0.9);
-      accent = _parseHexColor(custom['link'] ?? '#0969da', const Color(0xFF0969DA));
+      accent = _parseHexColor(
+        custom['link'] ?? '#0969da',
+        const Color(0xFF0969DA),
+      );
     }
 
     return Container(
@@ -207,7 +208,7 @@ class _AskAiModalState extends State<AskAiModal> {
               ],
             ),
           ),
-          
+
           // Context indicator
           if (activeResource != null)
             Container(
@@ -235,7 +236,7 @@ class _AskAiModalState extends State<AskAiModal> {
                 ],
               ),
             ),
-            
+
           // Chat Messages
           Expanded(
             child: ListView.builder(
@@ -249,7 +250,10 @@ class _AskAiModalState extends State<AskAiModal> {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: canvasSubtle,
                           border: Border.all(color: border),
@@ -272,14 +276,16 @@ class _AskAiModalState extends State<AskAiModal> {
                     ),
                   );
                 }
-                
+
                 final msg = _messages[index];
                 final isUser = msg['role'] == 'user';
-                
+
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Row(
-                    mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                    mainAxisAlignment: isUser
+                        ? MainAxisAlignment.end
+                        : MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (!isUser)
@@ -293,7 +299,7 @@ class _AskAiModalState extends State<AskAiModal> {
                           ),
                           child: Icon(Icons.psychology, size: 16, color: fg),
                         ),
-                        
+
                       Flexible(
                         child: Container(
                           padding: const EdgeInsets.all(16),
@@ -310,9 +316,7 @@ class _AskAiModalState extends State<AskAiModal> {
                           child: isUser
                               ? Text(
                                   msg['content'] ?? '',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                  ),
+                                  style: const TextStyle(color: Colors.white),
                                 )
                               : MarkdownView(
                                   data: msg['content'] ?? '',
@@ -320,7 +324,7 @@ class _AskAiModalState extends State<AskAiModal> {
                                 ),
                         ),
                       ),
-                      
+
                       if (isUser)
                         Container(
                           margin: const EdgeInsets.only(left: 12),
@@ -330,7 +334,11 @@ class _AskAiModalState extends State<AskAiModal> {
                             shape: BoxShape.circle,
                             border: Border.all(color: border),
                           ),
-                          child: Icon(Icons.person, size: 16, color: fg.withValues(alpha: 0.8)),
+                          child: Icon(
+                            Icons.person,
+                            size: 16,
+                            color: fg.withValues(alpha: 0.8),
+                          ),
                         ),
                     ],
                   ),
@@ -338,7 +346,7 @@ class _AskAiModalState extends State<AskAiModal> {
               },
             ),
           ),
-          
+
           // Suggestions
           if (activeResource != null && _messages.length == 1)
             SingleChildScrollView(
@@ -359,7 +367,7 @@ class _AskAiModalState extends State<AskAiModal> {
                 }).toList(),
               ),
             ),
-          
+
           // Input Area
           Container(
             padding: const EdgeInsets.all(16),
@@ -382,7 +390,10 @@ class _AskAiModalState extends State<AskAiModal> {
                       ),
                       filled: true,
                       fillColor: canvasSubtle,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
                     ),
                     onSubmitted: _sendMessage,
                   ),
