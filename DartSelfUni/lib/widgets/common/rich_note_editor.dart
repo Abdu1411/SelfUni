@@ -18,6 +18,7 @@ class RichNoteEditor extends StatefulWidget {
   final bool showTimestamp;
   final VoidCallback? onTap;
   final Duration Function()? onTimestampRequested;
+  final VoidCallback? onCustomExport;
 
   const RichNoteEditor({
     super.key,
@@ -25,6 +26,7 @@ class RichNoteEditor extends StatefulWidget {
     required this.onChanged,
     this.onSave,
     this.onExportToNotes,
+    this.onCustomExport,
     this.onSRS,
     this.title,
     this.showTimestamp = true,
@@ -707,7 +709,7 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
 
                       // Export to .md File Button
                       IconButton(
-                        onPressed: _exportNotesToFile,
+                        onPressed: widget.onCustomExport ?? _exportNotesToFile,
                         icon: const Icon(Icons.file_download_outlined, size: 20, color: Color(0xFF64748B)),
                         tooltip: 'Export Notes to .md File',
                       ),

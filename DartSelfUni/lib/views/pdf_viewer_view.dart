@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/lesson_model.dart';
@@ -75,119 +78,99 @@ class _PdfViewerViewState extends State<PdfViewerView> {
     );
   }
 
-  Future<void> _saveNotesWithFolderPrompt() async {
-    final folders = context.read<DeckProvider>().folders;
-    String? selectedFolderId = _activeLesson.folderId;
-
-    final shouldSave = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        String? tempFolderId = selectedFolderId;
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              backgroundColor: Colors.white,
-              child: Container(
-                width: 400,
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Save Notes',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    DropdownButtonFormField<String?>(
-                      initialValue: tempFolderId,
-                      decoration: const InputDecoration(
-                        labelText: 'Select Folder',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('No Folder (Root)'),
-                        ),
-                        ...folders.map((f) => DropdownMenuItem(
-                          value: f.id,
-                          child: Text(f.name),
-                        )),
-                      ],
-                      onChanged: (val) {
-                        setState(() {
-                          tempFolderId = val;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => FolderModal(
-                                onSave: (name, color) async {
-                                  final newFolder = await context.read<DeckProvider>().addFolder(name, color: color);
-                                  setState(() {
-                                    tempFolderId = newFolder.id;
-                                  });
-                                },
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.create_new_folder, size: 16, color: AppColors.primary),
-                          label: const Text('Create New Folder', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            selectedFolderId = tempFolderId;
-                            Navigator.of(context).pop(true);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Save'),
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    if (shouldSave == true) {
+  Future<void> _exportNotesToPdfDirectory() async {
+    try {
       final updatedLesson = _activeLesson;
       updatedLesson.content = _currentContent;
-      updatedLesson.folderId = selectedFolderId;
+      await context.read<DeckProvider>().updateLesson(updatedLesson);
+
+      if (_currentContent.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⚠️ Cannot export empty notes. Please write something first!'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      final sanitizeTitle = _activeLesson.title
+          .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+          .trim();
+
+      File? targetFile;
+
+      if (_activeLesson.pdfUrl != null && _activeLesson.pdfUrl!.isNotEmpty) {
+        final pdfFile = File(_activeLesson.pdfUrl!);
+        final parentDir = pdfFile.parent;
+        if (await parentDir.exists()) {
+          targetFile = File('${parentDir.path}/$sanitizeTitle.md');
+          await targetFile.writeAsString(_currentContent);
+        }
+      }
+
+      if (targetFile == null) {
+        final bytes = Uint8List.fromList(utf8.encode(_currentContent));
+        final Uri? selectedUri = await FilePicker.saveFile(
+          dialogTitle: 'Select Target Export File (Obligatory)',
+          fileName: '$sanitizeTitle.md',
+          type: FileType.custom,
+          allowedExtensions: ['md', 'markdown', 'txt'],
+          bytes: bytes,
+        );
+
+        if (selectedUri == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('⚠️ Export cancelled: A target file is obligatory to provide.'),
+                backgroundColor: Colors.amber,
+              ),
+            );
+          }
+          return;
+        }
+
+        final String filePath = selectedUri.isScheme('file') ? selectedUri.toFilePath() : selectedUri.path;
+        targetFile = File(filePath);
+        if (!await targetFile.exists() || (await targetFile.length()) == 0) {
+          await targetFile.writeAsBytes(bytes);
+        }
+      }
+
       if (mounted) {
-        context.read<DeckProvider>().updateLesson(updatedLesson);
+        final fileName = targetFile.uri.pathSegments.isNotEmpty
+            ? targetFile.uri.pathSegments.last
+            : targetFile.path;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notes saved successfully'), backgroundColor: AppColors.success),
+          SnackBar(
+            content: Text('📄 Note exported successfully to "$fileName" in PDF folder!'),
+            backgroundColor: AppColors.success,
+            action: SnackBarAction(
+              label: 'Open Folder',
+              textColor: Colors.white,
+              onPressed: () {
+                if (Platform.isWindows && targetFile!.parent.existsSync()) {
+                  Process.run('explorer.exe', [targetFile.parent.path]);
+                } else if (Platform.isMacOS && targetFile!.parent.existsSync()) {
+                  Process.run('open', [targetFile.parent.path]);
+                } else if (Platform.isLinux && targetFile!.parent.existsSync()) {
+                  Process.run('xdg-open', [targetFile.parent.path]);
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error exporting note: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -234,9 +217,9 @@ class _PdfViewerViewState extends State<PdfViewerView> {
             onPressed: () => setState(() => _isSidebarOpen = !_isSidebarOpen),
           ),
           IconButton(
-            icon: const Icon(Icons.save, color: AppColors.primary),
-            tooltip: 'Save Notes',
-            onPressed: _saveNotesWithFolderPrompt,
+            icon: const Icon(Icons.file_download_outlined, color: AppColors.primary),
+            tooltip: 'Export Notes to PDF Directory',
+            onPressed: _exportNotesToPdfDirectory,
           ),
           const SizedBox(width: 12),
         ],
@@ -449,6 +432,7 @@ class _PdfViewerViewState extends State<PdfViewerView> {
               },
               title: 'PDF Notes',
               onSave: _saveNotes,
+              onCustomExport: _exportNotesToPdfDirectory,
               showTimestamp: false,
             ),
           ),
