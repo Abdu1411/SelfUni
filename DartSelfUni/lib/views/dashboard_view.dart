@@ -882,23 +882,33 @@ class DashboardView extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFECFDF5),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFD1FAE5)),
-                      ),
-                      child: Text(
-                        lesson.title.replaceAll(' ', '-').toLowerCase(),
-                        style: const TextStyle(fontSize: 9, color: Color(0xFF059669), fontWeight: FontWeight.bold),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFECFDF5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFD1FAE5)),
+                        ),
+                        child: Text(
+                          lesson.title.replaceAll(' ', '-').toLowerCase(),
+                          style: const TextStyle(fontSize: 9, color: Color(0xFF059669), fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(dateStr, style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(lesson.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                Text(
+                  lesson.title,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 6),
                 Text(
                   lesson.content.length > 80 ? '${lesson.content.substring(0, 80)}...' : lesson.content,
