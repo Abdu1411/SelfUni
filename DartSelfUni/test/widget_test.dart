@@ -853,8 +853,13 @@ void traverse() {
         }
       });
 
-      // Set note theme to Soft Sepia
-      await deckProvider.setNoteTheme('Soft Sepia');
+      // Set custom note theme styles (Soft Sepia colors)
+      await deckProvider.setCustomThemeStyles({
+        'bg': '#fbf0d9',
+        'text': '#433422',
+        'link': '#8c6239',
+        'border': '#e6d8b8',
+      });
 
       await tester.pumpWidget(
         MultiProvider(

@@ -840,62 +840,61 @@ class NoteStyleDialog extends StatefulWidget {
 }
 
 class _NoteStyleDialogState extends State<NoteStyleDialog> {
-  late String _selectedTheme;
   late Map<String, String> _customStyles;
 
-  final List<String> _themePresets = [
-    'GitHub Light',
-    'GitHub Dark',
-    'Solarized Dark',
-    'Soft Sepia',
-    'Custom Theme'
-  ];
-
   final Map<String, List<String>> _colorOptions = {
-    'bg': ['#FFFFFF', '#F8FAFC', '#F1F5F9', '#FFFDF5', '#F5F5DC', '#0F172A', '#0D1117', '#1E1E1E', '#0B132B'],
-    'text': ['#000000', '#1E293B', '#475569', '#FFFFFF', '#CBD5E1', '#E2E8F0', '#FBBF24', '#38BDF8', '#839496'],
-    'link': ['#0969DA', '#2563EB', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#58A6FF'],
-    'border': ['#D0D7DE', '#E2E8F0', '#CBD5E1', '#30363D', '#475569', '#334155', '#F59E0B', '#073642', '#00000000'],
+    'bg': ['#FFFFFF', '#F8FAFC', '#F1F5F9', '#FAF9F6', '#FFFDF5', '#F5F5DC', '#0F172A', '#0D1117', '#1E1E1E', '#0B132B'],
+    'text': ['#000000', '#1A1A1A', '#1E293B', '#475569', '#FFFFFF', '#CBD5E1', '#E2E8F0', '#FBBF24', '#38BDF8', '#839496'],
+    'link': ['#1A5276', '#0969DA', '#2563EB', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#58A6FF'],
+    'border': ['#D0CEC4', '#D0D7DE', '#E2E8F0', '#CBD5E1', '#30363D', '#475569', '#334155', '#1A5276', '#073642', '#00000000'],
   };
 
   final Map<String, String> _colorNames = {
-    '#FFFFFF': 'White',
+    '#FFFFFF': 'Pure White',
     '#F8FAFC': 'Slate 50',
     '#F1F5F9': 'Slate 100',
-    '#FFFDF5': 'Paper',
-    '#F5F5DC': 'Beige',
+    '#FAF9F6': 'Warm Ivory',
+    '#FFFDF5': 'Paper Linen',
+    '#F5F5DC': 'Classic Beige',
     '#0F172A': 'Slate 900',
-    '#0D1117': 'GH Dark',
-    '#1E1E1E': 'VS Code',
-    '#0B132B': 'Midnight',
+    '#0D1117': 'GitHub Dark',
+    '#1E1E1E': 'VS Code Dark',
+    '#0B132B': 'Midnight Blue',
     
-    '#000000': 'Black',
-    '#1E293B': 'Charcoal',
-    '#475569': 'Grey',
-    '#CBD5E1': 'Silver',
+    '#000000': 'Solid Black',
+    '#1A1A1A': 'Charcoal Black',
+    '#1E293B': 'Deep Slate',
+    '#475569': 'Cool Grey',
+    '#CBD5E1': 'Silver Text',
     
-    '#0969DA': 'GH Blue',
-    '#2563EB': 'Indigo',
-    '#3B82F6': 'Blue',
-    '#8B5CF6': 'Purple',
-    '#10B981': 'Emerald',
-    '#F59E0B': 'Amber',
-    '#EF4444': 'Red',
-    '#EC4899': 'Pink',
+    '#1A5276': 'Deep Academic Blue',
+    '#0969DA': 'GitHub Blue',
+    '#2563EB': 'Indigo Accent',
+    '#3B82F6': 'Vibrant Blue',
+    '#8B5CF6': 'Royal Purple',
+    '#10B981': 'Emerald Green',
+    '#F59E0B': 'Warm Amber',
+    '#EF4444': 'Ruby Red',
+    '#EC4899': 'Magenta Pink',
     '#58A6FF': 'Sky Blue',
     
-    '#D0D7DE': 'GH Border',
+    '#D0CEC4': 'Academic Muted Line',
+    '#D0D7DE': 'GitHub Border',
     '#E2E8F0': 'Soft Line',
-    '#30363D': 'GH Dark Line',
-    '#00000000': 'None',
+    '#30363D': 'Dark Border',
+    '#00000000': 'No Border',
   };
 
   @override
   void initState() {
     super.initState();
     final provider = Provider.of<DeckProvider>(context, listen: false);
-    _selectedTheme = provider.noteTheme;
     _customStyles = Map<String, String>.from(provider.customThemeStyles);
+    if (!_customStyles.containsKey('bg')) _customStyles['bg'] = '#FFFFFF';
+    if (!_customStyles.containsKey('text')) _customStyles['text'] = '#1A1A1A';
+    if (!_customStyles.containsKey('link')) _customStyles['link'] = '#1A5276';
+    if (!_customStyles.containsKey('border')) _customStyles['border'] = '#D0D7DE';
+    if (!_customStyles.containsKey('font_size')) _customStyles['font_size'] = '16';
   }
 
   Color _getColorFromHex(String hex) {
@@ -912,20 +911,25 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<DeckProvider>(context);
+    final currentBg = _getColorFromHex(_customStyles['bg'] ?? '#FFFFFF');
+    final currentText = _getColorFromHex(_customStyles['text'] ?? '#1A1A1A');
+    final currentLink = _getColorFromHex(_customStyles['link'] ?? '#1A5276');
+    final currentBorder = _getColorFromHex(_customStyles['border'] ?? '#D0D7DE');
+    final currentFontSize = (double.tryParse(_customStyles['font_size'] ?? '16') ?? 16.0).clamp(12.0, 36.0);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       elevation: 16,
       backgroundColor: Colors.white,
       child: Container(
-        width: 600,
-        constraints: const BoxConstraints(maxHeight: 750),
+        width: 620,
+        constraints: const BoxConstraints(maxHeight: 780),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -937,16 +941,28 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
                           color: const Color(0xFFEFF6FF),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.palette, color: Color(0xFF2563EB), size: 22),
+                        child: const Icon(Icons.palette_outlined, color: Color(0xFF2563EB), size: 22),
                       ),
                       const SizedBox(width: 14),
-                      const Text(
-                        'Style My Notes',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Style My Notes',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          Text(
+                            'Custom styling & CSS stylesheet import',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -964,8 +980,74 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
+                  // 1. Import CSS Banner
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF8FAFC), Color(0xFFEFF6FF)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2563EB),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.code, color: Colors.white, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Import from CSS Stylesheet',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Load background, typography, borders, and colors directly from any .css file',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton.icon(
+                          onPressed: _importStylesFromCssFile,
+                          icon: const Icon(Icons.file_open_outlined, size: 15),
+                          label: const Text('Import CSS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // 2. Real-time Live Preview Card
                   const Text(
-                    'THEME PRESETS',
+                    'LIVE NOTE PREVIEW',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -973,222 +1055,152 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
                       letterSpacing: 0.8,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
 
-                  // Preset cards grid
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: _themePresets.map((presetName) {
-                      final isSelected = _selectedTheme == presetName;
-                      
-                      Color cardBg = Colors.white;
-                      Color cardText = const Color(0xFF24292F);
-                      Color cardLink = const Color(0xFF0969DA);
-                      Color cardBorder = const Color(0xFFD0D7DE);
-
-                      if (presetName == 'GitHub Light') {
-                        cardBg = const Color(0xFFFFFFFF);
-                        cardText = const Color(0xFF24292F);
-                        cardLink = const Color(0xFF0969DA);
-                        cardBorder = const Color(0xFFD0D7DE);
-                      } else if (presetName == 'GitHub Dark') {
-                        cardBg = const Color(0xFF0D1117);
-                        cardText = const Color(0xFFC9D1D9);
-                        cardLink = const Color(0xFF58A6FF);
-                        cardBorder = const Color(0xFF30363D);
-                      } else if (presetName == 'Solarized Dark') {
-                        cardBg = const Color(0xFF002B36);
-                        cardText = const Color(0xFF839496);
-                        cardLink = const Color(0xFF2AA198);
-                        cardBorder = const Color(0xFF073642);
-                      } else if (presetName == 'Soft Sepia') {
-                        cardBg = const Color(0xFFFBF0D9);
-                        cardText = const Color(0xFF433422);
-                        cardLink = const Color(0xFF8C6239);
-                        cardBorder = const Color(0xFFE6D8B8);
-                      } else {
-                        // Custom Theme Preview from current styles
-                        cardBg = _getColorFromHex(_customStyles['bg'] ?? '#ffffff');
-                        cardText = _getColorFromHex(_customStyles['text'] ?? '#24292f');
-                        cardLink = _getColorFromHex(_customStyles['link'] ?? '#0969da');
-                        cardBorder = _getColorFromHex(_customStyles['border'] ?? '#d0d7de');
-                      }
-
-                      return InkWell(
-                        onTap: () {
-                          setState(() {
-                            _selectedTheme = presetName;
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(16),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          width: 165,
-                          height: 90,
-                          decoration: BoxDecoration(
-                            color: cardBg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isSelected ? const Color(0xFF2563EB) : cardBorder,
-                              width: isSelected ? 2.5 : 1.2,
-                            ),
-                            boxShadow: [
-                              if (isSelected)
-                                BoxShadow(
-                                  color: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                )
-                            ],
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        presetName.toUpperCase(),
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: isSelected ? const Color(0xFF2563EB) : cardText.withValues(alpha: 0.7),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (isSelected)
-                                      const Icon(Icons.check_circle, size: 14, color: Color(0xFF2563EB)),
-                                  ],
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Abc notes content',
-                                      style: TextStyle(fontSize: 10, color: cardText),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'https://link.com',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        color: cardLink,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  // Custom theme parameters
-                  if (_selectedTheme == 'Custom Theme') ...[
-                    const SizedBox(height: 28),
-                    const Divider(color: Color(0xFFE2E8F0)),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'CUSTOM STYLING CONTROLS',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF94A3B8),
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _importStylesFromCssFile,
-                          icon: const Icon(Icons.file_open, size: 14),
-                          label: const Text('Import CSS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF2563EB),
-                            side: const BorderSide(color: Color(0xFFBFDBFE)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: currentBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: currentBorder == Colors.transparent ? const Color(0xFFCBD5E1) : currentBorder, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-
-                    _buildCustomColorSection(
-                      title: 'Background Color',
-                      type: 'bg',
-                    ),
-                    const SizedBox(height: 20),
-
-                    _buildCustomColorSection(
-                      title: 'Text Color',
-                      type: 'text',
-                    ),
-                    const SizedBox(height: 20),
-
-                    _buildCustomColorSection(
-                      title: 'Link / Accent Color',
-                      type: 'link',
-                    ),
-                    const SizedBox(height: 20),
-
-                    _buildCustomColorSection(
-                      title: 'Border Color',
-                      type: 'border',
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Font Size Slider
-                    Column(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Font Size',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF334155),
+                        Container(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: currentBorder == Colors.transparent ? currentLink : currentBorder,
+                                width: 2,
                               ),
                             ),
+                          ),
+                          child: Text(
+                            '1. Foundations of Mathematical Reasoning',
+                            style: TextStyle(
+                              fontSize: (currentFontSize + 2).clamp(14.0, 38.0),
+                              fontWeight: FontWeight.bold,
+                              color: currentLink,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Mathematics extends beyond calculation; it is the systematic determination of which assertions are true and which are false.',
+                          style: TextStyle(
+                            fontSize: currentFontSize,
+                            color: currentText,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
                             Text(
-                              '${_customStyles['font_size'] ?? '16'} px',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF64748B),
+                              'Reference: ',
+                              style: TextStyle(fontSize: currentFontSize * 0.9, color: currentText.withValues(alpha: 0.8)),
+                            ),
+                            Text(
+                              'https://selfuni.org/math-notes',
+                              style: TextStyle(
+                                fontSize: currentFontSize * 0.9,
+                                color: currentLink,
+                                decoration: TextDecoration.underline,
                               ),
                             ),
                           ],
                         ),
-                        Slider(
-                          value: (double.tryParse(_customStyles['font_size'] ?? '16') ?? 16.0).clamp(12.0, 36.0),
-                          min: 12.0,
-                          max: 36.0,
-                          divisions: 24,
-                          activeColor: const Color(0xFF2563EB),
-                          inactiveColor: const Color(0xFFE2E8F0),
-                          onChanged: (val) {
-                            setState(() {
-                              _customStyles['font_size'] = val.round().toString();
-                            });
-                          },
-                        ),
                       ],
                     ),
-                  ],
+                  ),
+
+                  const SizedBox(height: 24),
+                  const Divider(color: Color(0xFFE2E8F0)),
+                  const SizedBox(height: 16),
+
+                  // 3. Custom Color Pickers
+                  _buildCustomColorSection(
+                    title: 'Background Color',
+                    type: 'bg',
+                  ),
+                  const SizedBox(height: 20),
+
+                  _buildCustomColorSection(
+                    title: 'Text Color',
+                    type: 'text',
+                  ),
+                  const SizedBox(height: 20),
+
+                  _buildCustomColorSection(
+                    title: 'Link / Accent Color',
+                    type: 'link',
+                  ),
+                  const SizedBox(height: 20),
+
+                  _buildCustomColorSection(
+                    title: 'Border Color',
+                    type: 'border',
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 4. Font Size Slider
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Font Size',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Text(
+                              '${_customStyles['font_size'] ?? '16'} px',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2563EB),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: currentFontSize,
+                        min: 12.0,
+                        max: 36.0,
+                        divisions: 24,
+                        activeColor: const Color(0xFF2563EB),
+                        inactiveColor: const Color(0xFFE2E8F0),
+                        onChanged: (val) {
+                          setState(() {
+                            _customStyles['font_size'] = val.round().toString();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1205,11 +1217,11 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
                     child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
                   ),
                   const SizedBox(width: 12),
-                   ElevatedButton(
+                  ElevatedButton(
                     onPressed: () async {
                       final navigator = Navigator.of(context);
                       final scaffoldMessenger = ScaffoldMessenger.of(context);
-                      await provider.setNoteTheme(_selectedTheme);
+                      await provider.setNoteTheme('Custom Theme');
                       await provider.setCustomThemeStyles(_customStyles);
                       if (mounted) {
                         navigator.pop();
@@ -1336,7 +1348,7 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('⚠️ No valid style rules (e.g. background-color, color) found in the selected CSS file.'),
+                  content: Text('⚠️ No valid style rules (e.g. background-color, color, font-size) found in the selected CSS file.'),
                   backgroundColor: Colors.amber,
                 ),
               );
@@ -1345,16 +1357,16 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
           }
 
           setState(() {
-            _selectedTheme = 'Custom Theme';
             parsed.forEach((key, val) {
               _customStyles[key] = val;
             });
           });
 
           if (mounted) {
+            final details = parsed.entries.map((e) => '${e.key}: ${e.value}').join(', ');
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('🎨 Styles imported successfully from CSS file!'),
+              SnackBar(
+                content: Text('🎨 Styles imported successfully ($details)'),
                 backgroundColor: AppColors.success,
               ),
             );
@@ -1416,28 +1428,26 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
     // 2. Strip media queries to ignore overrides (like print or mobile rules)
     cleanCss = stripMediaQueries(cleanCss);
     
-    // 3. Parse selector blocks, e.g. body { ... }
-    final blockRegex = RegExp(r'([^{]+)\{([^}]+)\}');
-    final matches = blockRegex.allMatches(cleanCss);
-    
+    // 3. Parse selector blocks & variables
     final Map<String, String> variables = {};
     final List<Map<String, dynamic>> parsedBlocks = [];
+    
+    final blockRegex = RegExp(r'([^{]+)\{([^}]+)\}');
+    final matches = blockRegex.allMatches(cleanCss);
     
     for (final match in matches) {
       final selectors = match.group(1)!.trim().toLowerCase();
       final declarations = match.group(2)!.trim();
       
-      // Parse declaration list, e.g. background-color: #ffffff; color: #333;
       final decRegex = RegExp(r'([^:]+):([^;]+);?');
       final decMatches = decRegex.allMatches(declarations);
       
       final Map<String, String> ruleMap = {};
       for (final decMatch in decMatches) {
-        final key = decMatch.group(1)!.trim();
+        final key = decMatch.group(1)!.trim().toLowerCase();
         final val = decMatch.group(2)!.trim();
         ruleMap[key] = val;
         
-        // If it's a CSS variable declaration (starts with --)
         if (key.startsWith('--')) {
           variables[key] = val;
         }
@@ -1452,14 +1462,16 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
     // Helper to resolve var(--variable-name) in values
     String resolveValue(String val) {
       var resolved = val;
-      final varRegex = RegExp(r'var\((--[^)]+)\)');
+      final varRegex = RegExp(r'var\((--[^,)]+)(?:,\s*([^)]+))?\)');
       var match = varRegex.firstMatch(resolved);
       int iterations = 0;
-      // Loop to resolve nested vars up to 5 levels
       while (match != null && iterations < 5) {
         final varName = match.group(1)!.trim();
+        final fallback = match.group(2)?.trim();
         if (variables.containsKey(varName)) {
           resolved = resolved.replaceFirst(match.group(0)!, variables[varName]!);
+        } else if (fallback != null) {
+          resolved = resolved.replaceFirst(match.group(0)!, fallback);
         } else {
           break;
         }
@@ -1474,14 +1486,13 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
       final selectors = block['selectors'] as String;
       final ruleMap = block['rules'] as Map<String, String>;
       
-      // Resolve variables in this block's rules
       final resolvedRules = <String, String>{};
       ruleMap.forEach((k, v) {
         resolvedRules[k] = resolveValue(v);
       });
       
-      // If selector contains 'body' or 'html'
-      if (selectors.contains('body') || selectors.contains('html')) {
+      // If selector contains 'body' or 'html' or ':root'
+      if (selectors.contains('body') || selectors.contains('html') || selectors.contains(':root') || selectors.contains('main') || selectors.contains('.markdown') || selectors.contains('.note')) {
         if (resolvedRules.containsKey('background-color')) {
           final bg = _extractHexColor(resolvedRules['background-color']!);
           if (bg != null) styles['bg'] = bg;
@@ -1494,18 +1505,13 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
           if (text != null) styles['text'] = text;
         }
         if (resolvedRules.containsKey('font-size')) {
-          final fontSizeStr = RegExp(r'(\d+)').firstMatch(resolvedRules['font-size']!)?.group(1);
-          if (fontSizeStr != null) {
-            final fs = double.tryParse(fontSizeStr);
-            if (fs != null) {
-              styles['font_size'] = fs.clamp(12.0, 36.0).round().toString();
-            }
-          }
+          final fs = _extractFontSize(resolvedRules['font-size']!);
+          if (fs != null) styles['font_size'] = fs;
         }
       }
       
-      // If selector contains 'a' (specifically 'a' or 'a:link' etc.)
-      if (selectors.split(',').any((s) => s.trim() == 'a' || s.trim().startsWith('a:'))) {
+      // If selector contains 'a'
+      if (selectors.split(',').any((s) => s.trim() == 'a' || s.trim().startsWith('a:') || s.trim().contains('.link'))) {
         if (resolvedRules.containsKey('color')) {
           final link = _extractHexColor(resolvedRules['color']!);
           if (link != null) styles['link'] = link;
@@ -1513,12 +1519,15 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
       }
       
       // If selector contains border colors
-      if (selectors.contains('h1') || selectors.contains('h2') || selectors.contains('hr') || selectors.contains('.border') || selectors.contains('border')) {
+      if (selectors.contains('h1') || selectors.contains('h2') || selectors.contains('h3') || selectors.contains('hr') || selectors.contains('blockquote') || selectors.contains('.border') || selectors.contains('table') || selectors.contains('pre')) {
         if (resolvedRules.containsKey('border-color')) {
           final border = _extractHexColor(resolvedRules['border-color']!);
           if (border != null) styles['border'] = border;
         } else if (resolvedRules.containsKey('border-bottom-color')) {
           final border = _extractHexColor(resolvedRules['border-bottom-color']!);
+          if (border != null) styles['border'] = border;
+        } else if (resolvedRules.containsKey('border-left-color')) {
+          final border = _extractHexColor(resolvedRules['border-left-color']!);
           if (border != null) styles['border'] = border;
         } else if (resolvedRules.containsKey('border')) {
           final hex = _extractHexColor(resolvedRules['border']!);
@@ -1526,6 +1535,51 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
         } else if (resolvedRules.containsKey('border-bottom')) {
           final hex = _extractHexColor(resolvedRules['border-bottom']!);
           if (hex != null) styles['border'] = hex;
+        } else if (resolvedRules.containsKey('border-left')) {
+          final hex = _extractHexColor(resolvedRules['border-left']!);
+          if (hex != null) styles['border'] = hex;
+        }
+      }
+    }
+    
+    // 5. Fallback check on standard root variables if not yet resolved
+    if (!styles.containsKey('bg')) {
+      for (final k in ['--bg', '--background', '--page-bg', '--background-color', '--canvas-default']) {
+        if (variables.containsKey(k)) {
+          final color = _extractHexColor(resolveValue(variables[k]!));
+          if (color != null) { styles['bg'] = color; break; }
+        }
+      }
+    }
+    if (!styles.containsKey('text')) {
+      for (final k in ['--text', '--color', '--foreground', '--fg', '--text-color', '--fg-default']) {
+        if (variables.containsKey(k)) {
+          final color = _extractHexColor(resolveValue(variables[k]!));
+          if (color != null) { styles['text'] = color; break; }
+        }
+      }
+    }
+    if (!styles.containsKey('link')) {
+      for (final k in ['--link', '--accent', '--primary', '--link-color', '--accent-color', '--fg-accent']) {
+        if (variables.containsKey(k)) {
+          final color = _extractHexColor(resolveValue(variables[k]!));
+          if (color != null) { styles['link'] = color; break; }
+        }
+      }
+    }
+    if (!styles.containsKey('border')) {
+      for (final k in ['--border', '--border-color', '--border-default', '--line-color', '--divider']) {
+        if (variables.containsKey(k)) {
+          final color = _extractHexColor(resolveValue(variables[k]!));
+          if (color != null) { styles['border'] = color; break; }
+        }
+      }
+    }
+    if (!styles.containsKey('font_size')) {
+      for (final k in ['--font-size', '--base-font-size', '--text-size']) {
+        if (variables.containsKey(k)) {
+          final fs = _extractFontSize(resolveValue(variables[k]!));
+          if (fs != null) { styles['font_size'] = fs; break; }
         }
       }
     }
@@ -1534,8 +1588,11 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
   }
 
   String? _extractHexColor(String cssValue) {
-    final hexRegex = RegExp(r'#([0-9a-fA-F]{3,8})');
-    final hexMatch = hexRegex.firstMatch(cssValue);
+    final clean = cssValue.trim().toLowerCase();
+
+    // 1. Hex match
+    final hexRegex = RegExp(r'#([0-9a-f]{3,8})');
+    final hexMatch = hexRegex.firstMatch(clean);
     if (hexMatch != null) {
       String hex = hexMatch.group(0)!;
       if (hex.length == 4) {
@@ -1546,6 +1603,79 @@ class _NoteStyleDialogState extends State<NoteStyleDialog> {
       }
       return hex;
     }
+
+    // 2. rgb / rgba match: rgb(26, 82, 118)
+    final rgbMatch = RegExp(r'rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)').firstMatch(clean);
+    if (rgbMatch != null) {
+      final r = int.tryParse(rgbMatch.group(1)!) ?? 0;
+      final g = int.tryParse(rgbMatch.group(2)!) ?? 0;
+      final b = int.tryParse(rgbMatch.group(3)!) ?? 0;
+      String toHex(int val) => val.clamp(0, 255).toRadixString(16).padLeft(2, '0');
+      return '#${toHex(r)}${toHex(g)}${toHex(b)}';
+    }
+
+    // 3. Named colors
+    const namedColors = {
+      'white': '#ffffff',
+      'black': '#000000',
+      'transparent': '#00000000',
+      'red': '#ef4444',
+      'blue': '#3b82f6',
+      'green': '#10b981',
+      'gray': '#64748b',
+      'grey': '#64748b',
+      'amber': '#f59e0b',
+      'purple': '#8b5cf6',
+      'beige': '#f5f5dc',
+    };
+    for (final entry in namedColors.entries) {
+      if (clean == entry.key || clean.startsWith('${entry.key} ')) {
+        return entry.value;
+      }
+    }
+
+    return null;
+  }
+
+  String? _extractFontSize(String cssValue) {
+    final clean = cssValue.trim().toLowerCase();
+
+    // 1. Pixel values: 30px
+    final pxMatch = RegExp(r'([\d.]+)\s*px').firstMatch(clean);
+    if (pxMatch != null) {
+      final val = double.tryParse(pxMatch.group(1)!);
+      if (val != null) {
+        return val.clamp(12.0, 36.0).round().toString();
+      }
+    }
+
+    // 2. Point values: 14pt (1pt ~= 1.333px)
+    final ptMatch = RegExp(r'([\d.]+)\s*pt').firstMatch(clean);
+    if (ptMatch != null) {
+      final val = double.tryParse(ptMatch.group(1)!);
+      if (val != null) {
+        return (val * 1.333).clamp(12.0, 36.0).round().toString();
+      }
+    }
+
+    // 3. Rem / em values: 1.5rem (base 16px)
+    final remMatch = RegExp(r'([\d.]+)\s*r?em').firstMatch(clean);
+    if (remMatch != null) {
+      final val = double.tryParse(remMatch.group(1)!);
+      if (val != null) {
+        return (val * 16.0).clamp(12.0, 36.0).round().toString();
+      }
+    }
+
+    // 4. Raw digits
+    final digitMatch = RegExp(r'(\d+)').firstMatch(clean);
+    if (digitMatch != null) {
+      final val = double.tryParse(digitMatch.group(1)!);
+      if (val != null) {
+        return val.clamp(12.0, 36.0).round().toString();
+      }
+    }
+
     return null;
   }
 }

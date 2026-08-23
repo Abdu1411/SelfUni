@@ -112,49 +112,17 @@ class _AskAiModalState extends State<AskAiModal> {
     final theme = deckProvider.noteTheme;
     final custom = deckProvider.customThemeStyles;
 
-    Color bg;
-    Color fg;
-    Color border;
-    Color canvasSubtle;
-    Color accent;
-
-    if (theme == 'GitHub Light') {
-      bg = const Color(0xFFFFFFFF);
-      fg = const Color(0xFF24292F);
-      border = const Color(0xFFD0D7DE);
-      canvasSubtle = const Color(0xFFF6F8FA);
-      accent = const Color(0xFF0969DA);
-    } else if (theme == 'GitHub Dark') {
-      bg = const Color(0xFF0D1117);
-      fg = const Color(0xFFC9D1D9);
-      border = const Color(0xFF30363D);
-      canvasSubtle = const Color(0xFF161B22);
-      accent = const Color(0xFF58A6FF);
-    } else if (theme == 'Solarized Dark') {
-      bg = const Color(0xFF002B36);
-      fg = const Color(0xFF839496);
-      border = const Color(0xFF073642);
-      canvasSubtle = const Color(0xFF073642);
-      accent = const Color(0xFF2AA198);
-    } else if (theme == 'Soft Sepia') {
-      bg = const Color(0xFFFBF0D9);
-      fg = const Color(0xFF433422);
-      border = const Color(0xFFE6D8B8);
-      canvasSubtle = const Color(0xFFF3E6C9);
-      accent = const Color(0xFF8C6239);
-    } else {
-      bg = _parseHexColor(custom['bg'] ?? '#ffffff', const Color(0xFFFFFFFF));
-      fg = _parseHexColor(custom['text'] ?? '#24292f', const Color(0xFF24292F));
-      border = _parseHexColor(
-        custom['border'] ?? '#d0d7de',
-        const Color(0xFFD0D7DE),
-      );
-      canvasSubtle = bg.withValues(alpha: 0.9);
-      accent = _parseHexColor(
-        custom['link'] ?? '#0969da',
-        const Color(0xFF0969DA),
-      );
-    }
+    final bg = _parseHexColor(custom['bg'] ?? '#ffffff', const Color(0xFFFFFFFF));
+    final fg = _parseHexColor(custom['text'] ?? '#1a1a1a', const Color(0xFF1A1A1A));
+    final border = _parseHexColor(
+      custom['border'] ?? '#d0d7de',
+      const Color(0xFFD0D7DE),
+    );
+    final canvasSubtle = bg.withValues(alpha: 0.9);
+    final accent = _parseHexColor(
+      custom['link'] ?? '#1a5276',
+      const Color(0xFF1A5276),
+    );
 
     return Container(
       width: 450,
