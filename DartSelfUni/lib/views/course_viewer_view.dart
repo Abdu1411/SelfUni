@@ -271,10 +271,16 @@ class _CourseViewerViewState extends State<CourseViewerView> {
 
               // Remove from module
               module.items.removeWhere((i) => i.id == item.id);
+              await StorageService.deleteLocalFile(item.path);
+              await StorageService.deleteLocalFile(item.fileKey);
               await deckProvider.updateCourse(widget.course);
 
               // Delete lesson from DeckProvider if exists
-              final matchingLesson = deckProvider.lessons.where((l) => l.id == item.id).firstOrNull;
+              final matchingLesson = deckProvider.lessons.where((l) =>
+                  l.id == item.id ||
+                  (l.videoUrl != null && l.videoUrl == item.path && l.videoUrl!.isNotEmpty) ||
+                  (l.title.toLowerCase() == item.title.toLowerCase() && l.topic.toLowerCase() == widget.course.title.toLowerCase())
+              ).firstOrNull;
               if (matchingLesson != null) {
                 await deckProvider.deleteLesson(matchingLesson.id);
               }

@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/ai_service.dart';
@@ -383,10 +386,71 @@ class _LessonDetailViewState extends State<LessonDetailView> {
           ),
           const SizedBox(width: 8),
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf, color: AppColors.textSecondary),
-            tooltip: 'Export to PDF',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Exporting to PDF...')));
+            icon: const Icon(Icons.file_download_outlined, color: AppColors.textSecondary),
+            tooltip: 'Export Note to File',
+            onPressed: () async {
+              final content = widget.lesson.content;
+              if (content.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('⚠️ Cannot export empty note. Please add content first.'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+                return;
+              }
+
+              final sanitizeTitle = widget.lesson.title
+                  .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+                  .trim();
+              final bytes = Uint8List.fromList(utf8.encode(content));
+
+              final Uri? selectedUri = await FilePicker.saveFile(
+                dialogTitle: 'Select Target Export File (Obligatory)',
+                fileName: '$sanitizeTitle.md',
+                type: FileType.custom,
+                allowedExtensions: ['md', 'markdown', 'txt'],
+                bytes: bytes,
+              );
+
+              if (selectedUri == null) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('⚠️ Export cancelled: A target file is obligatory to provide.'),
+                      backgroundColor: Colors.amber,
+                    ),
+                  );
+                }
+                return;
+              }
+
+              final String filePath = selectedUri.isScheme('file') ? selectedUri.toFilePath() : selectedUri.path;
+              final targetFile = File(filePath);
+              if (!await targetFile.exists() || (await targetFile.length()) == 0) {
+                await targetFile.writeAsBytes(bytes);
+              }
+
+              if (context.mounted) {
+                final fileName = targetFile.uri.pathSegments.isNotEmpty
+                    ? targetFile.uri.pathSegments.last
+                    : targetFile.path;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('📄 Note exported successfully to "$fileName"!'),
+                    backgroundColor: AppColors.success,
+                    action: SnackBarAction(
+                      label: 'Open Folder',
+                      textColor: Colors.white,
+                      onPressed: () {
+                        if (Platform.isWindows && targetFile.parent.existsSync()) {
+                          Process.run('explorer.exe', [targetFile.parent.path]);
+                        }
+                      },
+                    ),
+                  ),
+                );
+              }
             },
           ),
           const SizedBox(width: 16),

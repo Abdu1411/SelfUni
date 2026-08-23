@@ -23,4 +23,7 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.3.20" apply false
 }
 
+rootProject.name = "selfuni_android"
+
 include(":app")
+

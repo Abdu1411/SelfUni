@@ -214,8 +214,22 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
       return l.title.toLowerCase().contains(q) || l.topic.toLowerCase().contains(q);
     }).toList();
 
-    // Prepare Display Folders: strictly user created / course folders (no unfiled folder)
-    final List<Folder> displayFolders = folders.where((f) => f.id != 'unfiled').toList();
+    // Prepare Display Folders: strictly user created / course folders
+    final List<Folder> displayFolders = List<Folder>.from(folders.where((f) => f.id != 'unfiled'));
+
+    // Dynamically include any course folders for existing video lessons so no imported lectures are ever hidden
+    for (final lesson in filteredLessons) {
+      if (lesson.topic.isNotEmpty &&
+          lesson.topic != 'Unfiled' &&
+          lesson.topic != 'General' &&
+          !displayFolders.any((f) => f.id == lesson.folderId || f.name.toLowerCase() == lesson.topic.toLowerCase())) {
+        displayFolders.add(Folder(
+          id: lesson.folderId ?? 'folder_${lesson.topic.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}',
+          name: lesson.topic,
+          color: '#3B82F6',
+        ));
+      }
+    }
 
     final activeFolder = displayFolders.firstWhere(
       (f) => f.id == _activeFolderId,
@@ -438,7 +452,7 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
       itemCount: displayFolders.length,
       itemBuilder: (context, index) {
         final folderObj = displayFolders[index];
-        final folderLessons = allVideoLessons.where((l) => l.folderId == folderObj.id).toList();
+        final folderLessons = allVideoLessons.where((l) => l.folderId == folderObj.id || l.topic.toLowerCase() == folderObj.name.toLowerCase()).toList();
 
         return Container(
           decoration: BoxDecoration(
@@ -601,7 +615,7 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
       crossAxisCount = 2;
     }
 
-    final lessons = allVideoLessons.where((l) => l.folderId == activeFolder.id).toList();
+    final lessons = allVideoLessons.where((l) => l.folderId == activeFolder.id || l.topic.toLowerCase() == activeFolder.name.toLowerCase()).toList();
 
     return GridView.builder(
       padding: EdgeInsets.all(isMobile ? 16 : 32),

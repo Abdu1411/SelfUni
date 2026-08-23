@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,6 +8,9 @@ import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:markdown/markdown.dart' as md;
 import '../../core/constants/app_colors.dart';
+import 'package:flutter_html/flutter_html.dart';
+import 'package:provider/provider.dart';
+import '../../providers/deck_provider.dart';
 
 /// Inline Math Syntax Parser for $math$ and \(math\)
 class InlineMathSyntax extends md.InlineSyntax {
@@ -379,6 +384,147 @@ class HrBuilder extends MarkdownElementBuilder {
   }
 }
 
+Color _parseHexColor(String hex, Color defaultColor) {
+  try {
+    var hexColor = hex.replaceAll('#', '').trim();
+    if (hexColor.length == 6) {
+      hexColor = 'FF$hexColor';
+    }
+    if (hexColor.length == 8) {
+      return Color(int.parse(hexColor, radix: 16));
+    }
+  } catch (_) {}
+  return defaultColor;
+}
+
+Map<String, Style> getHtmlStyleSheet(BuildContext context) {
+  DeckProvider? provider;
+  try {
+    provider = Provider.of<DeckProvider>(context, listen: false);
+  } catch (_) {}
+  final theme = provider?.noteTheme ?? 'GitHub Light';
+  final custom = provider?.customThemeStyles ?? {};
+
+  Color bg;
+  Color fg;
+  Color border;
+  Color canvasSubtle;
+  Color accent;
+  double fontSize = 16.0;
+
+  if (theme == 'GitHub Light') {
+    bg = const Color(0xFFFFFFFF);
+    fg = const Color(0xFF24292F);
+    border = const Color(0xFFD0D7DE);
+    canvasSubtle = const Color(0xFFF6F8FA);
+    accent = const Color(0xFF0969DA);
+  } else if (theme == 'GitHub Dark') {
+    bg = const Color(0xFF0D1117);
+    fg = const Color(0xFFC9D1D9);
+    border = const Color(0xFF30363D);
+    canvasSubtle = const Color(0xFF161B22);
+    accent = const Color(0xFF58A6FF);
+  } else if (theme == 'Solarized Dark') {
+    bg = const Color(0xFF002B36);
+    fg = const Color(0xFF839496);
+    border = const Color(0xFF073642);
+    canvasSubtle = const Color(0xFF073642);
+    accent = const Color(0xFF2AA198);
+  } else if (theme == 'Soft Sepia') {
+    bg = const Color(0xFFFBF0D9);
+    fg = const Color(0xFF433422);
+    border = const Color(0xFFE6D8B8);
+    canvasSubtle = const Color(0xFFF3E6C9);
+    accent = const Color(0xFF8C6239);
+  } else {
+    // Custom theme styles parsing
+    bg = _parseHexColor(custom['bg'] ?? '#ffffff', const Color(0xFFFFFFFF));
+    fg = _parseHexColor(custom['text'] ?? '#24292f', const Color(0xFF24292F));
+    border = _parseHexColor(custom['border'] ?? '#d0d7de', const Color(0xFFD0D7DE));
+    canvasSubtle = bg.withValues(alpha: 0.9);
+    accent = _parseHexColor(custom['link'] ?? '#0969da', const Color(0xFF0969DA));
+    fontSize = double.tryParse(custom['font_size'] ?? '16') ?? 16.0;
+  }
+
+  return {
+    "html": Style(
+      backgroundColor: bg,
+      color: fg,
+      fontSize: FontSize(fontSize),
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
+      lineHeight: const LineHeight(1.6),
+    ),
+    "body": Style(
+      margin: Margins.all(0),
+      padding: HtmlPaddings.all(16),
+    ),
+    "h1": Style(
+      fontSize: FontSize(fontSize * 1.6),
+      fontWeight: FontWeight.w600,
+      margin: Margins.only(top: 24, bottom: 16),
+      padding: HtmlPaddings.only(bottom: 8),
+      border: Border(bottom: BorderSide(color: border, width: 1)),
+    ),
+    "h2": Style(
+      fontSize: FontSize(fontSize * 1.3),
+      fontWeight: FontWeight.w600,
+      margin: Margins.only(top: 24, bottom: 16),
+      padding: HtmlPaddings.only(bottom: 6),
+      border: Border(bottom: BorderSide(color: border, width: 1)),
+    ),
+    "h3": Style(
+      fontSize: FontSize(fontSize * 1.15),
+      fontWeight: FontWeight.w600,
+      margin: Margins.only(top: 24, bottom: 16),
+    ),
+    "h4": Style(
+      fontSize: FontSize(fontSize),
+      fontWeight: FontWeight.w600,
+      margin: Margins.only(top: 24, bottom: 16),
+    ),
+    "p": Style(
+      margin: Margins.only(bottom: 16),
+      lineHeight: const LineHeight(1.6),
+    ),
+    "a": Style(
+      color: accent,
+      textDecoration: TextDecoration.underline,
+      fontWeight: FontWeight.bold,
+    ),
+    "table": Style(
+      margin: Margins.only(bottom: 16),
+      border: Border.all(color: border, width: 1),
+    ),
+    "th": Style(
+      backgroundColor: canvasSubtle,
+      padding: HtmlPaddings.all(10),
+      fontWeight: FontWeight.bold,
+      border: Border.all(color: border, width: 1),
+    ),
+    "td": Style(
+      padding: HtmlPaddings.all(10),
+      border: Border.all(color: border, width: 1),
+    ),
+    "li": Style(
+      margin: Margins.only(bottom: 8),
+    ),
+    "ul": Style(
+      margin: Margins.only(bottom: 16),
+      padding: HtmlPaddings.only(left: 24),
+    ),
+    "ol": Style(
+      margin: Margins.only(bottom: 16),
+      padding: HtmlPaddings.only(left: 24),
+    ),
+    "hr": Style(
+      height: Height(2, Unit.px),
+      backgroundColor: border,
+      border: Border.all(style: BorderStyle.none),
+      margin: Margins.symmetric(vertical: 24),
+    ),
+  };
+}
+
 class MarkdownView extends StatelessWidget {
   final String data;
   final bool isSelectable;
@@ -397,114 +543,273 @@ class MarkdownView extends StatelessWidget {
 
     final cleanedData = _sanitizeMarkdown(data);
 
-    return MarkdownBody(
-      data: cleanedData,
-      selectable: isSelectable,
-      extensionSet: md.ExtensionSet.gitHubFlavored,
-      onTapLink: (text, href, title) async {
-        if (href != null && href.isNotEmpty) {
-          final uri = Uri.parse(href);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri);
-          }
-        }
-      },
+    // Convert Markdown to HTML
+    final htmlData = md.markdownToHtml(
+      cleanedData,
       inlineSyntaxes: [InlineMathSyntax()],
       blockSyntaxes: const [BlockMathSyntax()],
-      builders: {
-        'latex_inline': InlineMathBuilder(),
-        'latex_block': BlockMathBuilder(),
-        'code': CodeBlockBuilder(),
-        'blockquote': CalloutBlockquoteBuilder(),
-        'hr': HrBuilder(),
-      },
-      styleSheet: MarkdownStyleSheet(
-        p: const TextStyle(
-          fontSize: 16,
-          color: Color(0xFF334155), // slate-700
-          height: 1.75,
-          letterSpacing: 0.2,
-        ),
-        a: const TextStyle(
-          fontSize: 16,
-          color: Color(0xFF2563EB),
-          decoration: TextDecoration.underline,
-          fontWeight: FontWeight.bold,
-        ),
-        h1: const TextStyle(
-          fontSize: 26,
-          fontWeight: FontWeight.w900,
-          color: Color(0xFF0F172A),
-          height: 1.35,
-          letterSpacing: -0.5,
-        ),
-        h2: const TextStyle(
-          fontSize: 21,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF0F172A),
-          height: 1.35,
-          letterSpacing: -0.3,
-        ),
-        h3: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF1E293B),
-          height: 1.35,
-        ),
-        h4: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF334155),
-        ),
-        listBullet: const TextStyle(
-          color: AppColors.primary,
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-        listIndent: 28,
-        tableBorder: TableBorder.all(
-          color: const Color(0xFFE2E8F0),
-          width: 1.2,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        tableHead: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF0F172A),
-        ),
-        tableBody: const TextStyle(
-          fontSize: 14,
-          color: Color(0xFF334155),
-          height: 1.5,
-        ),
-        tableHeadAlign: TextAlign.center,
-        tableCellsPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        tableColumnWidth: const FlexColumnWidth(),
-        code: const TextStyle(
-          fontFamily: 'Consolas, Courier New, monospace',
-          backgroundColor: Color(0xFFF1F5F9), // slate-100
-          color: Color(0xFF0284C7), // sky-600
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-        codeblockDecoration: const BoxDecoration(
-          color: Colors.transparent,
-        ),
-        codeblockPadding: EdgeInsets.zero,
-        blockquote: const TextStyle(
-          fontSize: 15,
-          color: Color(0xFF475569),
-          fontStyle: FontStyle.italic,
-          height: 1.6,
-        ),
-        blockquoteDecoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
-          border: const Border(left: BorderSide(color: Color(0xFF3B82F6), width: 4)),
-        ),
-        horizontalRuleDecoration: BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1.5)),
-        ),
+      extensionSet: md.ExtensionSet.gitHubFlavored,
+    );
+
+    // Re-watch Provider to dynamically rebuild when styling changes
+    DeckProvider? provider;
+    try {
+      provider = context.watch<DeckProvider>();
+    } catch (_) {}
+
+    return SelectionArea(
+      child: Html(
+        data: htmlData,
+        style: getHtmlStyleSheet(context),
+        onLinkTap: (url, attributes, element) async {
+          if (url != null && url.isNotEmpty) {
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri);
+            }
+          }
+        },
+        extensions: [
+          // Inline Math Extension
+          TagExtension(
+            tagsToExtend: {"latex_inline"},
+            builder: (extensionContext) {
+              final formula = extensionContext.element?.text ?? '';
+              try {
+                return Math.tex(
+                  formula,
+                  textStyle: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  onErrorFallback: (err) => Text('\$$formula\$', style: const TextStyle(color: AppColors.error, fontFamily: 'Consolas, monospace')),
+                );
+              } catch (_) {
+                return Text('\$$formula\$', style: const TextStyle(fontFamily: 'Consolas, monospace'));
+              }
+            },
+          ),
+          // Block Math Extension
+          TagExtension(
+            tagsToExtend: {"latex_block"},
+            builder: (extensionContext) {
+              final formula = extensionContext.element?.text ?? '';
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Center(
+                    child: Math.tex(
+                      formula,
+                      textStyle: const TextStyle(fontSize: 16.5, color: Color(0xFF0F172A)),
+                      onErrorFallback: (err) => Text('\$\$\n$formula\n\$\$', style: const TextStyle(color: AppColors.error, fontFamily: 'Consolas, monospace')),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          // Pre (Code Block) Extension
+          TagExtension(
+            tagsToExtend: {"pre"},
+            builder: (extensionContext) {
+              final codeElement = extensionContext.element?.getElementsByTagName('code').firstOrNull;
+              final code = codeElement?.text ?? extensionContext.element?.text ?? '';
+              final classes = codeElement?.classes ?? extensionContext.element?.classes ?? {};
+              var language = 'dart';
+              for (final c in classes) {
+                if (c.startsWith('language-')) {
+                  language = c.replaceFirst('language-', '');
+                  break;
+                }
+              }
+              return CodeSnippetWidget(code: code.trimRight(), language: language);
+            },
+          ),
+          // Inline Code Extension
+          TagExtension(
+            tagsToExtend: {"code"},
+            builder: (extensionContext) {
+              // If it has a pre parent, it is handled by the pre extension
+              if (extensionContext.element?.parent?.localName == 'pre') {
+                return const SizedBox.shrink();
+              }
+              final codeText = extensionContext.element?.text ?? '';
+              final theme = provider?.noteTheme ?? 'GitHub Light';
+              
+              Color codeBg = theme.contains('Dark') || theme == 'Solarized Dark'
+                  ? const Color(0xFF1E293B)
+                  : const Color(0xFFF1F5F9);
+              Color codeTextCol = theme.contains('Dark') || theme == 'Solarized Dark'
+                  ? const Color(0xFF38BDF8)
+                  : const Color(0xFF0284C7);
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: codeBg,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  codeText,
+                  style: TextStyle(
+                    fontFamily: 'Consolas, Courier New, monospace',
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: codeTextCol,
+                  ),
+                ),
+              );
+            },
+          ),
+          // Blockquote (Callouts) Extension
+          TagExtension(
+            tagsToExtend: {"blockquote"},
+            builder: (extensionContext) {
+              final rawText = extensionContext.element?.text.trim() ?? '';
+              
+              Color borderColor = AppColors.primary;
+              Color bgColor = const Color(0xFFEFF6FF); // blue-50
+              IconData icon = Icons.info_outline;
+              String alertTitle = 'Note';
+              bool isAlert = false;
+
+              if (rawText.startsWith('[!NOTE]') || rawText.startsWith('NOTE:')) {
+                borderColor = const Color(0xFF2563EB); // blue
+                bgColor = const Color(0xFFEFF6FF);
+                icon = Icons.info_outline;
+                alertTitle = 'Note';
+                isAlert = true;
+              } else if (rawText.startsWith('[!TIP]') || rawText.startsWith('TIP:')) {
+                borderColor = const Color(0xFF059669); // green
+                bgColor = const Color(0xFFECFDF5);
+                icon = Icons.lightbulb_outline;
+                alertTitle = 'Tip';
+                isAlert = true;
+              } else if (rawText.startsWith('[!IMPORTANT]') || rawText.startsWith('IMPORTANT:')) {
+                borderColor = const Color(0xFF7C3AED); // purple
+                bgColor = const Color(0xFFF5F3FF);
+                icon = Icons.stars_rounded;
+                alertTitle = 'Important';
+                isAlert = true;
+              } else if (rawText.startsWith('[!WARNING]') || rawText.startsWith('WARNING:')) {
+                borderColor = const Color(0xFFD97706); // amber
+                bgColor = const Color(0xFFFFFBEB);
+                icon = Icons.warning_amber_rounded;
+                alertTitle = 'Warning';
+                isAlert = true;
+              } else if (rawText.startsWith('[!CAUTION]') || rawText.startsWith('CAUTION:')) {
+                borderColor = const Color(0xFFDC2626); // red
+                bgColor = const Color(0xFFFEF2F2);
+                icon = Icons.error_outline;
+                alertTitle = 'Caution';
+                isAlert = true;
+              }
+
+              final theme = provider?.noteTheme ?? 'GitHub Light';
+
+              if (isAlert) {
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(icon, size: 18, color: borderColor),
+                          const SizedBox(width: 8),
+                          Text(
+                            alertTitle.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              color: borderColor,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Html(
+                        data: extensionContext.element?.innerHtml
+                            .replaceFirst(RegExp(r'^(\[!NOTE\]|NOTE:|\[!TIP\]|TIP:|\[!IMPORTANT\]|IMPORTANT:|\[!WARNING\]|WARNING:|\[!CAUTION\]|CAUTION:)\s*', caseSensitive: false), '') ?? '',
+                        style: getHtmlStyleSheet(extensionContext.buildContext ?? context),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              Color blockquoteBorderColor = theme.contains('Dark') || theme == 'Solarized Dark'
+                  ? const Color(0xFF30363D)
+                  : const Color(0xFFD0D7DE);
+              Color blockquoteBg = theme.contains('Dark') || theme == 'Solarized Dark'
+                  ? const Color(0xFF161B22)
+                  : const Color(0xFFF8FAFC);
+              Color blockquoteTextColor = theme.contains('Dark') || theme == 'Solarized Dark'
+                  ? const Color(0xFF8B949E)
+                  : const Color(0xFF475569);
+
+              return Container(
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: blockquoteBg,
+                  borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
+                  border: Border(left: BorderSide(color: blockquoteBorderColor, width: 4)),
+                ),
+                child: Html(
+                  data: extensionContext.element?.innerHtml ?? '',
+                  style: getHtmlStyleSheet(extensionContext.buildContext ?? context)..addAll({
+                    "p": Style(
+                      fontSize: FontSize(15),
+                      fontStyle: FontStyle.italic,
+                      color: blockquoteTextColor,
+                      lineHeight: const LineHeight(1.6),
+                      margin: Margins.all(0),
+                    ),
+                  }),
+                ),
+              );
+            },
+          ),
+          // Custom Image Handler Extension
+          TagExtension(
+            tagsToExtend: {"img"},
+            builder: (extensionContext) {
+              final src = extensionContext.attributes['src'] ?? '';
+              final alt = extensionContext.attributes['alt'];
+              final title = extensionContext.attributes['title'];
+              
+              if (src.isEmpty) return const SizedBox.shrink();
+              
+              final uri = Uri.tryParse(src);
+              if (uri == null) return const SizedBox.shrink();
+
+              return MarkdownImageWidget(
+                uri: uri,
+                alt: alt,
+                title: title,
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -515,7 +820,34 @@ String _sanitizeMarkdown(String raw) {
   // 1. Replace <br> tags with newlines
   String out = raw.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
 
-  // 2. Strip fenced code blocks from inside table rows.
+  // 2. Sanitize image paths: convert local file paths (with Windows drive letters, backslashes, spaces)
+  // into valid file:// URIs so markdown parser recognizes them without tripping on spaces.
+  out = out.replaceAllMapped(RegExp(r'!\[([^\]]*)\]\(([^)\n]+)\)'), (match) {
+    final alt = match.group(1) ?? '';
+    var rawDest = match.group(2) ?? '';
+    rawDest = rawDest.trim();
+    if (rawDest.startsWith('<') && rawDest.endsWith('>')) {
+      rawDest = rawDest.substring(1, rawDest.length - 1).trim();
+    }
+
+    if (rawDest.startsWith('http://') || rawDest.startsWith('https://') || rawDest.startsWith('data:')) {
+      return '![$alt](${rawDest.replaceAll(' ', '%20')})';
+    }
+
+    if (rawDest.startsWith('file://')) {
+      return '![$alt](${rawDest.replaceAll(' ', '%20')})';
+    }
+
+    try {
+      final fileUri = Uri.file(rawDest).toString();
+      return '![$alt]($fileUri)';
+    } catch (_) {
+      final safeDest = rawDest.replaceAll(r'\', '/').replaceAll(' ', '%20');
+      return '![$alt]($safeDest)';
+    }
+  });
+
+  // 3. Strip fenced code blocks from inside table rows.
   // Tables in markdown are lines starting with |. We detect table rows that
   // contain ``` and replace the whole code block with inline code instead.
   final lines = out.split('\n');
@@ -579,3 +911,425 @@ String _sanitizeMarkdown(String raw) {
 
   return result.join('\n');
 }
+
+/// Rich Markdown Image Viewer with local PC file support, zoom lightbox, and error recovery.
+class MarkdownImageWidget extends StatefulWidget {
+  final Uri uri;
+  final String? title;
+  final String? alt;
+
+  const MarkdownImageWidget({
+    super.key,
+    required this.uri,
+    this.title,
+    this.alt,
+  });
+
+  @override
+  State<MarkdownImageWidget> createState() => _MarkdownImageWidgetState();
+}
+
+class _MarkdownImageWidgetState extends State<MarkdownImageWidget> {
+  bool _isHovered = false;
+
+  bool get _isNetwork => widget.uri.scheme == 'http' || widget.uri.scheme == 'https';
+  bool get _isDataUri => widget.uri.scheme == 'data';
+
+  File? _resolveLocalFile() {
+    if (_isNetwork || _isDataUri) return null;
+    try {
+      if (widget.uri.isScheme('file')) {
+        try {
+          return File.fromUri(widget.uri);
+        } catch (_) {
+          return File(widget.uri.toFilePath());
+        }
+      }
+
+      var rawString = Uri.decodeFull(widget.uri.toString());
+      rawString = rawString.trim();
+      if (rawString.startsWith('<') && rawString.endsWith('>')) {
+        rawString = rawString.substring(1, rawString.length - 1).trim();
+      }
+
+      if (rawString.startsWith('file://')) {
+        try {
+          return File.fromUri(Uri.parse(rawString));
+        } catch (_) {
+          final uriParsed = Uri.tryParse(rawString);
+          if (uriParsed != null) {
+            return File(uriParsed.toFilePath());
+          }
+        }
+      }
+
+      // Windows drive path like C:/... or c:/...
+      if (widget.uri.scheme.length == 1 && RegExp(r'^[a-zA-Z]$').hasMatch(widget.uri.scheme)) {
+        final decodedPath = Uri.decodeFull(widget.uri.path);
+        final winPath = '${widget.uri.scheme.toUpperCase()}:$decodedPath';
+        return File(winPath);
+      }
+
+      if (RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(rawString)) {
+        return File(rawString);
+      }
+
+      if (rawString.isNotEmpty) {
+        return File(rawString);
+      }
+
+      if (widget.uri.path.isNotEmpty) {
+        final decoded = Uri.decodeFull(widget.uri.path);
+        return File(decoded);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String _getDisplayLabel() {
+    if (widget.title != null && widget.title!.isNotEmpty) {
+      return widget.title!;
+    }
+    if (widget.alt != null && widget.alt!.isNotEmpty) {
+      return widget.alt!;
+    }
+    final file = _resolveLocalFile();
+    if (file != null) {
+      return file.uri.pathSegments.isNotEmpty ? file.uri.pathSegments.last : file.path;
+    }
+    return '';
+  }
+
+  void _openImageZoom(BuildContext context, ImageProvider imageProvider, String displayTitle) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(20),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 6.0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image(image: imageProvider, fit: BoxFit.contain),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!_isNetwork && !_isDataUri)
+                    IconButton(
+                      icon: const Icon(Icons.folder_open, color: Colors.white, size: 22),
+                      tooltip: 'Show in Explorer',
+                      style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                      onPressed: () {
+                        final file = _resolveLocalFile();
+                        if (file != null && Platform.isWindows) {
+                          Process.run('explorer.exe', ['/select,', file.path]);
+                        }
+                      },
+                    ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 24),
+                    tooltip: 'Close',
+                    style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            if (displayTitle.isNotEmpty)
+              Positioned(
+                bottom: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Text(
+                    displayTitle,
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget(String errorMsg, String? path) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2), // red-50
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFCA5A5)), // red-300
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.broken_image_outlined, size: 20, color: Color(0xFFDC2626)),
+              SizedBox(width: 8),
+              Text(
+                'Image Not Found or Inaccessible',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
+              ),
+            ],
+          ),
+          if (path != null && path.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFFEE2E2)),
+              ),
+              child: SelectableText(
+                path,
+                style: const TextStyle(fontSize: 11, fontFamily: 'Consolas, monospace', color: Color(0xFF475569)),
+              ),
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text(
+            errorMsg,
+            style: const TextStyle(fontSize: 11.5, color: Color(0xFF7F1D1D)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayLabel = _getDisplayLabel();
+
+    // 1. Network Image
+    if (_isNetwork) {
+      final networkProvider = NetworkImage(widget.uri.toString());
+      return _buildImageCard(
+        context: context,
+        imageProvider: networkProvider,
+        displayLabel: displayLabel,
+        child: Image(
+          image: networkProvider,
+          fit: BoxFit.contain,
+          loadingBuilder: (ctx, child, progress) {
+            if (progress == null) return child;
+            return Container(
+              height: 200,
+              alignment: Alignment.center,
+              child: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+            );
+          },
+          errorBuilder: (ctx, err, stack) => _buildErrorWidget(
+            'Failed to load remote image from web URL.',
+            widget.uri.toString(),
+          ),
+        ),
+      );
+    }
+
+    // 2. Data URI
+    if (_isDataUri) {
+      try {
+        final dataString = widget.uri.data?.contentAsString() ?? widget.uri.toString();
+        final commaIndex = dataString.indexOf(',');
+        final base64String = commaIndex >= 0 ? dataString.substring(commaIndex + 1) : dataString;
+        final bytes = base64Decode(base64String);
+        final memoryProvider = MemoryImage(bytes);
+        return _buildImageCard(
+          context: context,
+          imageProvider: memoryProvider,
+          displayLabel: displayLabel,
+          child: Image(
+            image: memoryProvider,
+            fit: BoxFit.contain,
+            errorBuilder: (ctx, err, stack) => _buildErrorWidget('Invalid embedded base64 image data.', null),
+          ),
+        );
+      } catch (e) {
+        return _buildErrorWidget('Failed to parse embedded image data: $e', null);
+      }
+    }
+
+    // 3. Local PC File Image
+    final file = _resolveLocalFile();
+    if (file == null || !file.existsSync()) {
+      return _buildErrorWidget(
+        'Check that the file exists on your PC and the file path is correct.',
+        file?.path ?? widget.uri.toString(),
+      );
+    }
+
+    final fileProvider = FileImage(file);
+    return _buildImageCard(
+      context: context,
+      imageProvider: fileProvider,
+      displayLabel: displayLabel,
+      localFile: file,
+      child: Image(
+        image: fileProvider,
+        fit: BoxFit.contain,
+        errorBuilder: (ctx, err, stack) => _buildErrorWidget(
+          'Failed to render image file: $err',
+          file.path,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageCard({
+    required BuildContext context,
+    required ImageProvider imageProvider,
+    required String displayLabel,
+    required Widget child,
+    File? localFile,
+  }) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Image Content with Zoom Overlay
+            ClipRRect(
+              borderRadius: BorderRadius.vertical(
+                top: const Radius.circular(13),
+                bottom: displayLabel.isNotEmpty ? Radius.zero : const Radius.circular(13),
+              ),
+              child: Stack(
+                children: [
+                  GestureDetector(
+                    onTap: () => _openImageZoom(context, imageProvider, displayLabel),
+                    child: Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxHeight: 480),
+                      alignment: Alignment.center,
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                      child: child,
+                    ),
+                  ),
+
+                  // Floating Toolbar on Hover / Desktop
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: AnimatedOpacity(
+                      opacity: _isHovered ? 1.0 : 0.7,
+                      duration: const Duration(milliseconds: 150),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.zoom_in, color: Colors.white, size: 18),
+                              tooltip: 'Zoom / Fullscreen',
+                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                              padding: EdgeInsets.zero,
+                              onPressed: () => _openImageZoom(context, imageProvider, displayLabel),
+                            ),
+                            if (localFile != null && Platform.isWindows) ...[
+                              const SizedBox(width: 2),
+                              IconButton(
+                                icon: const Icon(Icons.folder_open, color: Colors.white, size: 18),
+                                tooltip: 'Open File in Explorer',
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                padding: EdgeInsets.zero,
+                                onPressed: () {
+                                  Process.run('explorer.exe', ['/select,', localFile.path]);
+                                },
+                              ),
+                            ],
+                            const SizedBox(width: 2),
+                            IconButton(
+                              icon: const Icon(Icons.copy, color: Colors.white, size: 16),
+                              tooltip: 'Copy Path',
+                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                              padding: EdgeInsets.zero,
+                              onPressed: () {
+                                final pathText = localFile?.path ?? widget.uri.toString();
+                                Clipboard.setData(ClipboardData(text: pathText));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('📋 Image path copied to clipboard'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Caption Bar if title or alt is available
+            if (displayLabel.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF1F5F9), // slate-100
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(13)),
+                  border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.photo_outlined, size: 14, color: AppColors.textSecondary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        displayLabel,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF475569),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

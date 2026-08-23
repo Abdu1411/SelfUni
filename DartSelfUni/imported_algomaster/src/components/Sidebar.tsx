@@ -150,9 +150,6 @@ export function Sidebar({
                   AlgoMaster <span className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">SRS</span>
                 </h1>
               </div>
-              <span className="text-[10px] font-mono text-slate-400 block tracking-wider">
-                Dart & CS Accelerator
-              </span>
             </div>
           </Link>
         </div>

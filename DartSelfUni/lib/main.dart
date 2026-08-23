@@ -376,9 +376,13 @@ class _SettingsModalState extends State<SettingsModal> {
         if (platformFile.path != null) {
           final file = File(platformFile.path!);
           final jsonString = await file.readAsString();
-          await StorageService().restoreBackupJson(jsonString);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backup imported! Please restart the app to see changes.')));
+            await context.read<DeckProvider>().restoreBackup(jsonString);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Backup imported and applied successfully!')),
+              );
+            }
           }
         }
       }

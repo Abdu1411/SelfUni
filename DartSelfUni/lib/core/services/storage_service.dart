@@ -56,14 +56,18 @@ class StorageService {
   }
 
   Future<void> saveDecks(List<Deck> decks) async {
-    final jsonList = decks.map((e) => e.toJson()).toList();
-    final jsonString = jsonEncode(jsonList);
-    if (kIsWeb) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(decksFile, jsonString);
-    } else {
-      final file = await _getLocalFile(decksFile);
-      await file.writeAsString(jsonString);
+    try {
+      final jsonList = decks.map((e) => e.toJson()).toList();
+      final jsonString = jsonEncode(jsonList);
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(decksFile, jsonString);
+      } else {
+        final file = await _getLocalFile(decksFile);
+        await file.writeAsString(jsonString);
+      }
+    } catch (e) {
+      print('Error saving decks: $e');
     }
   }
 
@@ -92,14 +96,18 @@ class StorageService {
   }
 
   Future<void> saveFolders(List<Folder> folders) async {
-    final jsonList = folders.map((e) => e.toJson()).toList();
-    final jsonString = jsonEncode(jsonList);
-    if (kIsWeb) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(foldersFile, jsonString);
-    } else {
-      final file = await _getLocalFile(foldersFile);
-      await file.writeAsString(jsonString);
+    try {
+      final jsonList = folders.map((e) => e.toJson()).toList();
+      final jsonString = jsonEncode(jsonList);
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(foldersFile, jsonString);
+      } else {
+        final file = await _getLocalFile(foldersFile);
+        await file.writeAsString(jsonString);
+      }
+    } catch (e) {
+      print('Error saving folders: $e');
     }
   }
 
@@ -128,14 +136,18 @@ class StorageService {
   }
 
   Future<void> saveLessons(List<Lesson> lessons) async {
-    final jsonList = lessons.map((e) => e.toJson()).toList();
-    final jsonString = jsonEncode(jsonList);
-    if (kIsWeb) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(lessonsFile, jsonString);
-    } else {
-      final file = await _getLocalFile(lessonsFile);
-      await file.writeAsString(jsonString);
+    try {
+      final jsonList = lessons.map((e) => e.toJson()).toList();
+      final jsonString = jsonEncode(jsonList);
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(lessonsFile, jsonString);
+      } else {
+        final file = await _getLocalFile(lessonsFile);
+        await file.writeAsString(jsonString);
+      }
+    } catch (e) {
+      print('Error saving lessons: $e');
     }
   }
 
@@ -164,14 +176,18 @@ class StorageService {
   }
 
   Future<void> saveCourses(List<Course> courses) async {
-    final jsonList = courses.map((e) => e.toJson()).toList();
-    final jsonString = jsonEncode(jsonList);
-    if (kIsWeb) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(coursesFile, jsonString);
-    } else {
-      final file = await _getLocalFile(coursesFile);
-      await file.writeAsString(jsonString);
+    try {
+      final jsonList = courses.map((e) => e.toJson()).toList();
+      final jsonString = jsonEncode(jsonList);
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(coursesFile, jsonString);
+      } else {
+        final file = await _getLocalFile(coursesFile);
+        await file.writeAsString(jsonString);
+      }
+    } catch (e) {
+      print('Error saving courses: $e');
     }
   }
 
@@ -200,14 +216,18 @@ class StorageService {
   }
 
   Future<void> saveReviewLogs(List<ReviewLog> logs) async {
-    final jsonList = logs.map((e) => e.toJson()).toList();
-    final jsonString = jsonEncode(jsonList);
-    if (kIsWeb) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(reviewsFile, jsonString);
-    } else {
-      final file = await _getLocalFile(reviewsFile);
-      await file.writeAsString(jsonString);
+    try {
+      final jsonList = logs.map((e) => e.toJson()).toList();
+      final jsonString = jsonEncode(jsonList);
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(reviewsFile, jsonString);
+      } else {
+        final file = await _getLocalFile(reviewsFile);
+        await file.writeAsString(jsonString);
+      }
+    } catch (e) {
+      print('Error saving reviews: $e');
     }
   }
 
@@ -236,14 +256,18 @@ class StorageService {
   }
 
   Future<void> saveTimeLogs(List<TimeLog> logs) async {
-    final jsonList = logs.map((e) => e.toJson()).toList();
-    final jsonString = jsonEncode(jsonList);
-    if (kIsWeb) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(timeLogsFile, jsonString);
-    } else {
-      final file = await _getLocalFile(timeLogsFile);
-      await file.writeAsString(jsonString);
+    try {
+      final jsonList = logs.map((e) => e.toJson()).toList();
+      final jsonString = jsonEncode(jsonList);
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(timeLogsFile, jsonString);
+      } else {
+        final file = await _getLocalFile(timeLogsFile);
+        await file.writeAsString(jsonString);
+      }
+    } catch (e) {
+      print('Error saving timelogs: $e');
     }
   }
 
@@ -258,52 +282,202 @@ class StorageService {
     await prefs.setString('deepseek_api_key', apiKey.trim());
   }
 
+  Future<String> getNoteTheme() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('note_theme') ?? 'GitHub Light';
+    } catch (_) {
+      return 'GitHub Light';
+    }
+  }
+
+  Future<void> saveNoteTheme(String theme) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('note_theme', theme);
+    } catch (_) {}
+  }
+
+  Future<Map<String, String>> getCustomThemeStyles() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('custom_theme_styles');
+      if (jsonStr != null) {
+        try {
+          final Map<String, dynamic> decoded = jsonDecode(jsonStr);
+          return decoded.map((key, value) => MapEntry(key, value.toString()));
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return {
+      'bg': '#ffffff',
+      'text': '#24292f',
+      'link': '#0969da',
+      'border': '#d0d7de',
+      'font_size': '16',
+    };
+  }
+
+  Future<void> saveCustomThemeStyles(Map<String, String> styles) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('custom_theme_styles', jsonEncode(styles));
+    } catch (_) {}
+  }
+
   // --- Backup & Restore ---
   Future<String> generateBackupJson() async {
-    final decks = await loadDecks();
-    final folders = await loadFolders();
-    final lessons = await loadLessons();
-    final courses = await loadCourses();
-    final reviews = await loadReviewLogs();
-    final timeLogs = await loadTimeLogs();
+    final Map<String, dynamic> backup = {};
 
-    final Map<String, dynamic> backup = {
-      'decks': decks.map((e) => e.toJson()).toList(),
-      'folders': folders.map((e) => e.toJson()).toList(),
-      'lessons': lessons.map((e) => e.toJson()).toList(),
-      'courses': courses.map((e) => e.toJson()).toList(),
-      'reviews': reviews.map((e) => e.toJson()).toList(),
-      'timeLogs': timeLogs.map((e) => e.toJson()).toList(),
-    };
+    // 1. SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys();
+    final Map<String, dynamic> sharedPrefsBackup = {};
+    for (final key in keys) {
+      sharedPrefsBackup[key] = prefs.get(key);
+    }
+    backup['sharedPreferences'] = sharedPrefsBackup;
+
+    // 2. Files in Documents Directory
+    final docDir = await getApplicationDocumentsDirectory();
+    final List<Map<String, dynamic>> filesBackup = [];
+
+    final List<String> targetDirs = ['AlgoMaster', 'SelfUni_Notes'];
+    for (final dirName in targetDirs) {
+      final dir = Directory('${docDir.path}/$dirName');
+      if (await dir.exists()) {
+        final List<FileSystemEntity> entities = await dir.list(recursive: true).toList();
+        for (final entity in entities) {
+          if (entity is File) {
+            final String relativePath = entity.path
+                .substring(docDir.path.length + 1)
+                .replaceAll('\\', '/');
+            
+            final isBinary = _isFileBinary(entity);
+            if (isBinary) {
+              final bytes = await entity.readAsBytes();
+              filesBackup.add({
+                'path': relativePath,
+                'content': base64Encode(bytes),
+                'isBinary': true,
+              });
+            } else {
+              final text = await entity.readAsString();
+              filesBackup.add({
+                'path': relativePath,
+                'content': text,
+                'isBinary': false,
+              });
+            }
+          }
+        }
+      }
+    }
+    backup['files'] = filesBackup;
 
     return jsonEncode(backup);
+  }
+
+  bool _isFileBinary(File file) {
+    final path = file.path.toLowerCase();
+    if (path.endsWith('.json') || path.endsWith('.md') || path.endsWith('.txt') || path.endsWith('.html') || path.endsWith('.css')) {
+      return false;
+    }
+    return true;
   }
 
   Future<void> restoreBackupJson(String jsonString) async {
     try {
       final Map<String, dynamic> backup = jsonDecode(jsonString);
+      final docDir = await getApplicationDocumentsDirectory();
       
-      if (backup.containsKey('decks')) {
-        await saveDecks((backup['decks'] as List).map((e) => Deck.fromJson(e as Map<String, dynamic>)).toList());
+      // 1. SharedPreferences
+      if (backup.containsKey('sharedPreferences')) {
+        final prefs = await SharedPreferences.getInstance();
+        final Map<String, dynamic> spMap = backup['sharedPreferences'] as Map<String, dynamic>;
+        for (final entry in spMap.entries) {
+          final val = entry.value;
+          if (val is String) {
+            await prefs.setString(entry.key, val);
+          } else if (val is int) {
+            await prefs.setInt(entry.key, val);
+          } else if (val is double) {
+            await prefs.setDouble(entry.key, val);
+          } else if (val is bool) {
+            await prefs.setBool(entry.key, val);
+          } else if (val is List) {
+            await prefs.setStringList(entry.key, val.map((e) => e.toString()).toList());
+          }
+        }
       }
-      if (backup.containsKey('folders')) {
-        await saveFolders((backup['folders'] as List).map((e) => Folder.fromJson(e as Map<String, dynamic>)).toList());
-      }
-      if (backup.containsKey('lessons')) {
-        await saveLessons((backup['lessons'] as List).map((e) => Lesson.fromJson(e as Map<String, dynamic>)).toList());
-      }
-      if (backup.containsKey('courses')) {
-        await saveCourses((backup['courses'] as List).map((e) => Course.fromJson(e as Map<String, dynamic>)).toList());
-      }
-      if (backup.containsKey('reviews')) {
-        await saveReviewLogs((backup['reviews'] as List).map((e) => ReviewLog.fromJson(e as Map<String, dynamic>)).toList());
-      }
-      if (backup.containsKey('timeLogs')) {
-        await saveTimeLogs((backup['timeLogs'] as List).map((e) => TimeLog.fromJson(e as Map<String, dynamic>)).toList());
+
+      // 2. Files
+      if (backup.containsKey('files')) {
+        final List<dynamic> filesList = backup['files'] as List;
+        for (final item in filesList) {
+          final fileMap = item as Map<String, dynamic>;
+          final relativePath = fileMap['path'] as String;
+          final content = fileMap['content'] as String;
+          final isBinary = fileMap['isBinary'] as bool? ?? false;
+
+          final targetFile = File('${docDir.path}/$relativePath');
+          final parentDir = targetFile.parent;
+          if (!await parentDir.exists()) {
+            await parentDir.create(recursive: true);
+          }
+
+          if (isBinary) {
+            final bytes = base64Decode(content);
+            await targetFile.writeAsBytes(bytes);
+          } else {
+            await targetFile.writeAsString(content);
+          }
+        }
       }
     } catch (e) {
       print('Failed to restore backup: $e');
       rethrow;
+    }
+  }
+
+  // --- Physical File & Directory Deletion Helpers ---
+  static Future<void> deleteLocalFile(String? filePath) async {
+    if (filePath == null || filePath.trim().isEmpty) return;
+    final trimmed = filePath.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+      return;
+    }
+
+    try {
+      String resolvedPath = trimmed;
+      if (resolvedPath.startsWith('file://')) {
+        try {
+          resolvedPath = Uri.parse(resolvedPath).toFilePath();
+        } catch (_) {
+          resolvedPath = resolvedPath.replaceFirst(RegExp(r'^file://+'), '');
+        }
+      }
+
+      final file = File(resolvedPath);
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('Permanently deleted local file: $resolvedPath');
+      }
+    } catch (e) {
+      debugPrint('Error deleting local file ($filePath): $e');
+    }
+  }
+
+  static Future<void> deleteDirectory(String? dirPath) async {
+    if (dirPath == null || dirPath.trim().isEmpty) return;
+    try {
+      final dir = Directory(dirPath.trim());
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+        debugPrint('Permanently deleted directory: $dirPath');
+      }
+    } catch (e) {
+      debugPrint('Error deleting directory ($dirPath): $e');
     }
   }
 }

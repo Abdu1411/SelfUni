@@ -41,6 +41,34 @@ class _ExportNoteModalState extends State<ExportNoteModal> {
     _topicController = TextEditingController(text: widget.defaultTopic);
     _newFolderNameController = TextEditingController();
     _selectedFolderId = widget.defaultFolderId;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final deckProvider = context.read<DeckProvider>();
+      final validFolders = deckProvider.folders.where((f) => f.id != 'unfiled').toList();
+
+      if (_selectedFolderId == null) {
+        // Try to match by topic or title
+        final topicMatch = validFolders.where((f) =>
+          f.name.toLowerCase() == widget.defaultTopic.toLowerCase() ||
+          f.name.toLowerCase() == widget.defaultTitle.toLowerCase()
+        ).firstOrNull;
+
+        if (topicMatch != null) {
+          setState(() => _selectedFolderId = topicMatch.id);
+        } else if (validFolders.isNotEmpty) {
+          setState(() => _selectedFolderId = validFolders.first.id);
+        } else {
+          // If no folders exist, force creating a new folder
+          setState(() {
+            _createNewFolder = true;
+            _newFolderNameController.text = widget.defaultTopic.isNotEmpty
+                ? widget.defaultTopic
+                : (widget.defaultTitle.isNotEmpty ? widget.defaultTitle : 'Course Lectures');
+          });
+        }
+      }
+    });
   }
 
   @override
@@ -55,21 +83,43 @@ class _ExportNoteModalState extends State<ExportNoteModal> {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a note title.'), backgroundColor: AppColors.error),
+        const SnackBar(content: Text('⚠️ Please enter a note title.'), backgroundColor: AppColors.error),
       );
       return;
     }
 
+    final deckProvider = context.read<DeckProvider>();
+    String? folderId;
+
+    // Obligatory folder verification
+    if (_createNewFolder) {
+      final newFolderName = _newFolderNameController.text.trim();
+      if (newFolderName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Destination folder is obligatory: Please enter a folder name.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+      final newFolder = await deckProvider.addFolder(newFolderName);
+      folderId = newFolder.id;
+    } else {
+      if (_selectedFolderId == null || _selectedFolderId!.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Destination folder is obligatory: Please select or create a folder.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+      folderId = _selectedFolderId;
+    }
+
     setState(() => _isSaving = true);
     try {
-      final deckProvider = context.read<DeckProvider>();
-
-      String? folderId = _selectedFolderId;
-      if (_createNewFolder && _newFolderNameController.text.trim().isNotEmpty) {
-        final newFolder = await deckProvider.addFolder(_newFolderNameController.text.trim());
-        folderId = newFolder.id;
-      }
-
       final topic = _topicController.text.trim().isNotEmpty
           ? _topicController.text.trim()
           : 'Lecture Notes';
@@ -261,16 +311,45 @@ class _ExportNoteModalState extends State<ExportNoteModal> {
             ),
             const SizedBox(height: 16),
 
-            // Folder Selection
+            // Folder Selection (Obligatory)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'TARGET FOLDER',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5),
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Flexible(
+                        child: Text(
+                          'DESTINATION FOLDER',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Text(' *', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFFFECACA)),
+                        ),
+                        child: const Text('Obligatory', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                      ),
+                    ],
+                  ),
                 ),
                 TextButton(
-                  onPressed: () => setState(() => _createNewFolder = !_createNewFolder),
+                  onPressed: () {
+                    setState(() {
+                      _createNewFolder = !_createNewFolder;
+                      if (_createNewFolder && _newFolderNameController.text.trim().isEmpty) {
+                        _newFolderNameController.text = _topicController.text.trim().isNotEmpty
+                            ? _topicController.text.trim()
+                            : (_titleController.text.trim().isNotEmpty ? _titleController.text.trim() : 'Course Lectures');
+                      }
+                    });
+                  },
                   style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
                   child: Text(
                     _createNewFolder ? 'Select Existing' : '+ New Folder',
@@ -280,12 +359,12 @@ class _ExportNoteModalState extends State<ExportNoteModal> {
               ],
             ),
             const SizedBox(height: 8),
-            if (_createNewFolder)
+            if (_createNewFolder || folders.where((f) => f.id != 'unfiled').isEmpty)
               TextField(
                 controller: _newFolderNameController,
                 style: const TextStyle(fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: 'Enter new folder name...',
+                  hintText: 'Enter destination folder name (Required)...',
                   prefixIcon: const Icon(Icons.create_new_folder_outlined, size: 18, color: Color(0xFF10B981)),
                   filled: true,
                   fillColor: const Color(0xFFF8FAFC),
@@ -296,25 +375,26 @@ class _ExportNoteModalState extends State<ExportNoteModal> {
                 ),
               )
             else
-              DropdownButtonFormField<String?>(
+              DropdownButtonFormField<String>(
                 initialValue: _selectedFolderId,
                 decoration: InputDecoration(
+                  hintText: 'Select a destination folder (Obligatory)...',
                   filled: true,
                   fillColor: const Color(0xFFF8FAFC),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('No Folder (Root Library)'),
+                items: folders.where((f) => f.id != 'unfiled').map((f) => DropdownMenuItem(
+                  value: f.id,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.folder_outlined, size: 16, color: Color(0xFF10B981)),
+                      const SizedBox(width: 8),
+                      Text(f.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                    ],
                   ),
-                  ...folders.map((f) => DropdownMenuItem(
-                    value: f.id,
-                    child: Text(f.name),
-                  )),
-                ],
+                )).toList(),
                 onChanged: (val) {
                   setState(() {
                     _selectedFolderId = val;

@@ -111,6 +111,16 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
             : 'https://www.youtube.com/watch?v=${widget.lecture.videoId}')
         : null;
 
+    final deckProvider = context.read<DeckProvider>();
+    final matchingLesson = deckProvider.lessons.where((l) =>
+      l.videoUrl == videoUrl || l.title == widget.lecture.title
+    ).firstOrNull;
+
+    final defaultFolderId = matchingLesson?.folderId ??
+        deckProvider.folders.where((f) =>
+          f.id != 'unfiled' && f.name.toLowerCase() == widget.lecture.category.toLowerCase()
+        ).firstOrNull?.id;
+
     showDialog(
       context: context,
       builder: (context) => ExportNoteModal(
@@ -118,6 +128,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
         defaultTitle: widget.lecture.title,
         defaultTopic: widget.lecture.category,
         videoUrl: videoUrl,
+        defaultFolderId: defaultFolderId,
       ),
     );
   }

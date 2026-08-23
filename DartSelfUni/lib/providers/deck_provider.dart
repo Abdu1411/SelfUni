@@ -8,6 +8,7 @@ import '../../models/lesson_model.dart';
 import '../../models/course_model.dart';
 import '../../models/card_model.dart';
 import '../core/services/storage_service.dart';
+import '../core/services/notes_storage_service.dart';
 
 class DeckProvider extends ChangeNotifier {
   final StorageService _storageService = StorageService();
@@ -33,6 +34,24 @@ class DeckProvider extends ChangeNotifier {
   List<TimeLog> get timeLogs => _timeLogs;
   bool get isLoading => _isLoading;
 
+  String _noteTheme = 'GitHub Light';
+  Map<String, String> _customThemeStyles = {};
+
+  String get noteTheme => _noteTheme;
+  Map<String, String> get customThemeStyles => _customThemeStyles;
+
+  Future<void> setNoteTheme(String theme) async {
+    _noteTheme = theme;
+    await _storageService.saveNoteTheme(theme);
+    notifyListeners();
+  }
+
+  Future<void> setCustomThemeStyles(Map<String, String> styles) async {
+    _customThemeStyles = styles;
+    await _storageService.saveCustomThemeStyles(styles);
+    notifyListeners();
+  }
+
   DeckProvider() {
     _initData();
   }
@@ -41,79 +60,139 @@ class DeckProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    _decks = await _storageService.loadDecks();
-    _folders = await _storageService.loadFolders();
-    _lessons = await _storageService.loadLessons();
-    _courses = await _storageService.loadCourses();
-    _reviews = await _storageService.loadReviewLogs();
-    _timeLogs = await _storageService.loadTimeLogs();
+    try {
+      _decks = await _storageService.loadDecks();
+      _folders = await _storageService.loadFolders();
+      _lessons = await _storageService.loadLessons();
+      _courses = await _storageService.loadCourses();
+      _reviews = await _storageService.loadReviewLogs();
+      _timeLogs = await _storageService.loadTimeLogs();
+      _noteTheme = await _storageService.getNoteTheme();
+      _customThemeStyles = await _storageService.getCustomThemeStyles();
 
-    // Verify or create the master Universal Deck
-    final hasUniversal = _decks.any((d) => d.id == 'universal');
-    if (!hasUniversal) {
-      final initialCards = _decks.expand((d) => d.cards).map((c) => c.copyWith(deckId: 'universal')).toList();
-      _decks.add(Deck(
-        id: 'universal',
-        title: 'Universal Deck',
-        cards: initialCards,
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-      ));
-      await _storageService.saveDecks(_decks);
-    } else {
-      // Sync/purge orphaned cards from the Universal Deck that no longer exist in any other active deck
-      final activeCardIds = _decks.where((d) => d.id != 'universal').expand((d) => d.cards).map((c) => c.id).toSet();
-      final univIdx = _decks.indexWhere((d) => d.id == 'universal');
-      if (univIdx != -1) {
-        final originalCount = _decks[univIdx].cards.length;
-        _decks[univIdx].cards.removeWhere((c) => !activeCardIds.contains(c.id));
-        if (_decks[univIdx].cards.length != originalCount) {
-          await _storageService.saveDecks(_decks);
+      // Verify or create the master Universal Deck
+      final hasUniversal = _decks.any((d) => d.id == 'universal');
+      if (!hasUniversal) {
+        final initialCards = _decks.expand((d) => d.cards).map((c) => c.copyWith(deckId: 'universal')).toList();
+        _decks.add(Deck(
+          id: 'universal',
+          title: 'Universal Deck',
+          cards: initialCards,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+        ));
+        await _storageService.saveDecks(_decks);
+      } else {
+        // Sync cards in the Universal Deck
+        final activeCardIds = _decks.where((d) => d.id != 'universal').expand((d) => d.cards).map((c) => c.id).toSet();
+        final univIdx = _decks.indexWhere((d) => d.id == 'universal');
+        if (univIdx != -1) {
+          final originalCount = _decks[univIdx].cards.length;
+          _decks[univIdx].cards.removeWhere((c) => !activeCardIds.contains(c.id));
+          if (_decks[univIdx].cards.length != originalCount) {
+            await _storageService.saveDecks(_decks);
+          }
         }
       }
+
+      // Two-way synchronization: Ensure all local courses with video items have matching folders & lessons
+      bool foldersModified = false;
+      bool lessonsModified = false;
+
+      for (final course in _courses) {
+        // Ensure course folder exists
+        Folder? courseFolder = _folders.where((f) => f.id == course.id || f.name.toLowerCase() == course.title.toLowerCase()).firstOrNull;
+        if (courseFolder == null) {
+          courseFolder = Folder(id: course.id, name: course.title, color: '#3B82F6');
+          _folders.add(courseFolder);
+          foldersModified = true;
+        }
+
+        // Check if course has video items and sync them into _lessons
+        for (final module in course.modules) {
+          for (final item in module.items) {
+            if (item.type == 'video' || (item.path != null && item.path!.isNotEmpty)) {
+              final videoUrl = item.path ?? '';
+              final exists = _lessons.any((l) =>
+                l.id == item.id ||
+                (l.videoUrl == videoUrl && videoUrl.isNotEmpty) ||
+                (l.title.toLowerCase() == item.title.toLowerCase() && l.topic.toLowerCase() == course.title.toLowerCase())
+              );
+
+              if (!exists && videoUrl.isNotEmpty) {
+                _lessons.add(Lesson(
+                  id: item.id.isNotEmpty ? item.id : 'lec_${DateTime.now().millisecondsSinceEpoch}_${_lessons.length}',
+                  title: item.title,
+                  topic: course.title,
+                  videoUrl: videoUrl,
+                  sourceUrl: videoUrl,
+                  folderId: courseFolder.id,
+                  content: '# ${item.title}\n\nLive course video stream for ${course.title}.\n\nVideo URL: $videoUrl',
+                  isNote: false,
+                ));
+                lessonsModified = true;
+              }
+            }
+          }
+        }
+      }
+
+      // Ensure all existing lessons with topics have an associated folder so they are visible
+      for (final lesson in _lessons) {
+        if (lesson.folderId == null || lesson.folderId == 'unfiled' || !_folders.any((f) => f.id == lesson.folderId)) {
+          if (lesson.topic.isNotEmpty && lesson.topic != 'Unfiled' && lesson.topic != 'General') {
+            Folder? matchingFolder = _folders.where((f) => f.name.toLowerCase() == lesson.topic.toLowerCase()).firstOrNull;
+            if (matchingFolder == null) {
+              matchingFolder = Folder(id: 'folder_${lesson.topic.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}', name: lesson.topic, color: '#3B82F6');
+              _folders.add(matchingFolder);
+              foldersModified = true;
+            }
+            lesson.folderId = matchingFolder.id;
+            lessonsModified = true;
+          }
+        }
+      }
+
+      if (foldersModified) {
+        await _storageService.saveFolders(_folders);
+      }
+      if (lessonsModified) {
+        await _storageService.saveLessons(_lessons);
+      }
+    } catch (e) {
+      print('Error loading initial data: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    // Auto-clean orphaned lessons & decks if no matching folder or course exists
-    final activeFolderIds = _folders.map((f) => f.id).toSet();
-    final activeCourseTitles = _courses.map((c) => c.title.toLowerCase()).toSet();
-    
-    _lessons.removeWhere((l) {
-      final hasFolder = l.folderId != null && l.folderId != 'unfiled' && activeFolderIds.contains(l.folderId);
-      final hasCourse = activeCourseTitles.contains(l.topic.toLowerCase());
-      return !hasFolder && !hasCourse;
-    });
-
-    final originalDecksCount = _decks.length;
-    _decks.removeWhere((d) => d.id != 'universal' && d.folderId != null && !activeFolderIds.contains(d.folderId));
-    
-    // Sync Universal Deck if any orphaned decks were removed
-    final activeCardIdsAfter = _decks.where((d) => d.id != 'universal').expand((d) => d.cards).map((c) => c.id).toSet();
-    final univIdxAfter = _decks.indexWhere((d) => d.id == 'universal');
-    if (univIdxAfter != -1) {
-      _decks[univIdxAfter].cards.removeWhere((c) => !activeCardIdsAfter.contains(c.id));
-    }
-
-    if (_decks.length != originalDecksCount) {
-      await _storageService.saveDecks(_decks);
-    }
-    await _storageService.saveLessons(_lessons);
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   Future<void> purgeOrphanedData() async {
     final activeFolderIds = _folders.map((f) => f.id).toSet();
-    final activeCourseTitles = _courses.map((c) => c.title.toLowerCase()).toSet();
     
-    _lessons.removeWhere((l) {
-      final hasFolder = l.folderId != null && l.folderId != 'unfiled' && activeFolderIds.contains(l.folderId);
-      final hasCourse = activeCourseTitles.contains(l.topic.toLowerCase());
-      return !hasFolder && !hasCourse;
-    });
-
     // Clean up decks whose folderId is no longer in active folders
+    final orphanedDecks = _decks.where((d) => d.id != 'universal' && d.folderId != null && !activeFolderIds.contains(d.folderId)).toList();
+    for (final d in orphanedDecks) {
+      for (final c in d.cards) {
+        if (c.imageUrl != null && c.imageUrl!.isNotEmpty) {
+          await StorageService.deleteLocalFile(c.imageUrl);
+        }
+      }
+    }
     _decks.removeWhere((d) => d.id != 'universal' && d.folderId != null && !activeFolderIds.contains(d.folderId));
     
+    // Clean up lessons whose folderId is no longer in active folders (if not unfiled)
+    final orphanedLessons = _lessons.where((l) => l.folderId != null && l.folderId != 'unfiled' && !activeFolderIds.contains(l.folderId)).toList();
+    for (final l in orphanedLessons) {
+      await StorageService.deleteLocalFile(l.pdfUrl);
+      await StorageService.deleteLocalFile(l.videoUrl);
+      await StorageService.deleteLocalFile(l.imageUrl);
+      if (l.multimedia != null) {
+        for (final m in l.multimedia!) {
+          await StorageService.deleteLocalFile(m.url);
+        }
+      }
+    }
+
     // Sync Universal Deck
     final activeCardIds = _decks.where((d) => d.id != 'universal').expand((d) => d.cards).map((c) => c.id).toSet();
     final univIdx = _decks.indexWhere((d) => d.id == 'universal');
@@ -148,10 +227,23 @@ class DeckProvider extends ChangeNotifier {
     final deck = _decks.where((d) => d.id == id).firstOrNull;
     if (deck != null) {
       final cardIdsToRemove = deck.cards.map((c) => c.id).toSet();
+      
+      // 1. Delete all card images permanently from internal storage
+      for (final card in deck.cards) {
+        if (card.imageUrl != null && card.imageUrl!.isNotEmpty) {
+          await StorageService.deleteLocalFile(card.imageUrl);
+        }
+      }
+
+      // 2. Remove cards from universal deck
       final univIdx = _decks.indexWhere((d) => d.id == 'universal');
       if (univIdx != -1) {
         _decks[univIdx].cards.removeWhere((c) => cardIdsToRemove.contains(c.id));
       }
+
+      // 3. Remove reviews associated with this deck and its cards
+      _reviews.removeWhere((r) => r.deckId == id || cardIdsToRemove.contains(r.cardId));
+      await _storageService.saveReviewLogs(_reviews);
     }
     _decks.removeWhere((d) => d.id == id);
     await _storageService.saveDecks(_decks);
@@ -271,7 +363,25 @@ class DeckProvider extends ChangeNotifier {
   Future<void> deleteCardFromDeck(String deckId, String cardId) async {
     final index = _decks.indexWhere((d) => d.id == deckId);
     if (index != -1) {
-      _decks[index].cards.removeWhere((c) => c.id == cardId);
+      final cardIndex = _decks[index].cards.indexWhere((c) => c.id == cardId);
+      if (cardIndex != -1) {
+        final card = _decks[index].cards[cardIndex];
+        if (card.imageUrl != null && card.imageUrl!.isNotEmpty) {
+          await StorageService.deleteLocalFile(card.imageUrl);
+        }
+        _decks[index].cards.removeAt(cardIndex);
+      }
+      
+      // Also remove from universal deck
+      final univIndex = _decks.indexWhere((d) => d.id == 'universal');
+      if (univIndex != -1) {
+        _decks[univIndex].cards.removeWhere((c) => c.id == cardId);
+      }
+
+      // Remove review logs for this card
+      _reviews.removeWhere((r) => r.cardId == cardId);
+      await _storageService.saveReviewLogs(_reviews);
+
       await _storageService.saveDecks(_decks);
       notifyListeners();
     }
@@ -306,7 +416,22 @@ class DeckProvider extends ChangeNotifier {
       final folderName = folder.name;
       final cleanFolderName = folderName.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 
-      // Deleting the folder also deletes the matching local course (vice versa)
+      // Deleting the folder also cleans up matching local courses and their files
+      final matchingCourses = _courses.where((c) {
+        final cleanCourseTitle = c.title.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+        return c.id == id || cleanCourseTitle == cleanFolderName;
+      }).toList();
+
+      for (final c in matchingCourses) {
+        for (final module in c.modules) {
+          for (final item in module.items) {
+            await StorageService.deleteLocalFile(item.path);
+            await StorageService.deleteLocalFile(item.fileKey);
+          }
+        }
+        await StorageService.deleteLocalFile(c.coverImageUrl);
+      }
+
       _courses.removeWhere((c) {
         final cleanCourseTitle = c.title.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
         return c.id == id || cleanCourseTitle == cleanFolderName;
@@ -314,27 +439,46 @@ class DeckProvider extends ChangeNotifier {
       await _storageService.saveCourses(_courses);
     }
 
-    // Collect card IDs from all decks in this folder to remove from universal deck
+    // 3. Collect card IDs from all decks in this folder to remove from universal deck and delete card images
     final decksToDelete = _decks.where((d) => d.folderId == id).toList();
     final cardIdsToRemove = decksToDelete.expand((d) => d.cards).map((c) => c.id).toSet();
+    for (final d in decksToDelete) {
+      for (final c in d.cards) {
+        if (c.imageUrl != null && c.imageUrl!.isNotEmpty) {
+          await StorageService.deleteLocalFile(c.imageUrl);
+        }
+      }
+    }
+
     final univIdx = _decks.indexWhere((d) => d.id == 'universal');
     if (univIdx != -1 && cardIdsToRemove.isNotEmpty) {
       _decks[univIdx].cards.removeWhere((c) => cardIdsToRemove.contains(c.id));
     }
-
-    if (deleteDecksInside) {
-      _decks.removeWhere((d) => d.folderId == id);
-      _lessons.removeWhere((l) => l.folderId == id);
-      await _storageService.saveDecks(_decks);
-      await _storageService.saveLessons(_lessons);
-    } else {
-      // Deleting a live lecture folder should also clean up its lessons/videos
-      _decks.removeWhere((d) => d.folderId == id);
-      _lessons.removeWhere((l) => l.folderId == id);
-      await _storageService.saveDecks(_decks);
-      await _storageService.saveLessons(_lessons);
+    if (cardIdsToRemove.isNotEmpty) {
+      _reviews.removeWhere((r) => cardIdsToRemove.contains(r.cardId));
+      await _storageService.saveReviewLogs(_reviews);
     }
+
+    // 4. Delete all lessons in this folder and remove their files permanently
+    final lessonsToDelete = _lessons.where((l) => l.folderId == id).toList();
+    for (final l in lessonsToDelete) {
+      await StorageService.deleteLocalFile(l.pdfUrl);
+      await StorageService.deleteLocalFile(l.videoUrl);
+      await StorageService.deleteLocalFile(l.imageUrl);
+      if (l.multimedia != null) {
+        for (final m in l.multimedia!) {
+          await StorageService.deleteLocalFile(m.url);
+        }
+      }
+      await NotesStorageService.deleteNoteFromClass(className: l.topic, lectureTitle: l.title);
+    }
+
+    _decks.removeWhere((d) => d.folderId == id);
+    _lessons.removeWhere((l) => l.folderId == id);
     _folders.removeWhere((f) => f.id == id);
+
+    await _storageService.saveDecks(_decks);
+    await _storageService.saveLessons(_lessons);
     await _storageService.saveFolders(_folders);
     notifyListeners();
   }
@@ -401,6 +545,51 @@ class DeckProvider extends ChangeNotifier {
   }
 
   Future<void> deleteLesson(String id) async {
+    final lesson = _lessons.where((l) => l.id == id).firstOrNull;
+    if (lesson != null) {
+      // 1. Permanently delete physical files from internal storage
+      await StorageService.deleteLocalFile(lesson.pdfUrl);
+      await StorageService.deleteLocalFile(lesson.videoUrl);
+      await StorageService.deleteLocalFile(lesson.imageUrl);
+      if (lesson.multimedia != null) {
+        for (final m in lesson.multimedia!) {
+          await StorageService.deleteLocalFile(m.url);
+        }
+      }
+
+      // 2. Remove / clean up note entry in SelfUni_Notes
+      if (lesson.topic.isNotEmpty) {
+        await NotesStorageService.deleteNoteFromClass(
+          className: lesson.topic,
+          lectureTitle: lesson.title,
+        );
+      }
+
+      // 3. Remove corresponding video/note item from courses
+      bool coursesModified = false;
+      for (final course in _courses) {
+        for (final module in course.modules) {
+          final countBefore = module.items.length;
+          module.items.removeWhere((item) {
+            final isMatch = item.id == id ||
+                (item.path != null && item.path == lesson.videoUrl && item.path!.isNotEmpty) ||
+                (item.fileKey != null && item.fileKey == lesson.videoUrl && item.fileKey!.isNotEmpty);
+            if (isMatch) {
+              StorageService.deleteLocalFile(item.path);
+              StorageService.deleteLocalFile(item.fileKey);
+            }
+            return isMatch;
+          });
+          if (module.items.length != countBefore) {
+            coursesModified = true;
+          }
+        }
+      }
+      if (coursesModified) {
+        await _storageService.saveCourses(_courses);
+      }
+    }
+
     _lessons.removeWhere((l) => l.id == id);
     await _storageService.saveLessons(_lessons);
     notifyListeners();
@@ -415,7 +604,32 @@ class DeckProvider extends ChangeNotifier {
   Future<void> renameLesson(String id, String title) async {
     final index = _lessons.indexWhere((l) => l.id == id);
     if (index != -1 && title.trim().isNotEmpty) {
-      _lessons[index].title = title.trim();
+      final lesson = _lessons[index];
+      final oldTitle = lesson.title;
+      final newTitle = title.trim();
+
+      lesson.title = newTitle;
+
+      bool courseModified = false;
+      for (var course in _courses) {
+        for (var module in course.modules) {
+          for (var i = 0; i < module.items.length; i++) {
+            final item = module.items[i];
+            final matches = item.id == lesson.id ||
+                (item.path == lesson.videoUrl && lesson.videoUrl != null && lesson.videoUrl!.isNotEmpty) ||
+                item.title == oldTitle;
+            if (matches) {
+              module.items[i] = item.copyWith(title: newTitle);
+              courseModified = true;
+            }
+          }
+        }
+      }
+
+      if (courseModified) {
+        await _storageService.saveCourses(_courses);
+      }
+
       await _storageService.saveLessons(_lessons);
       notifyListeners();
     }
@@ -424,7 +638,33 @@ class DeckProvider extends ChangeNotifier {
   Future<void> updateLesson(Lesson lesson) async {
     final index = _lessons.indexWhere((l) => l.id == lesson.id);
     if (index != -1) {
+      final oldLesson = _lessons[index];
+      final oldTitle = oldLesson.title;
+      final newTitle = lesson.title;
+
       _lessons[index] = lesson;
+
+      if (oldTitle != newTitle && newTitle.trim().isNotEmpty) {
+        bool courseModified = false;
+        for (var course in _courses) {
+          for (var module in course.modules) {
+            for (var i = 0; i < module.items.length; i++) {
+              final item = module.items[i];
+              final matches = item.id == lesson.id ||
+                  (item.path == lesson.videoUrl && lesson.videoUrl != null && lesson.videoUrl!.isNotEmpty) ||
+                  item.title == oldTitle;
+              if (matches) {
+                module.items[i] = item.copyWith(title: newTitle);
+                courseModified = true;
+              }
+            }
+          }
+        }
+        if (courseModified) {
+          await _storageService.saveCourses(_courses);
+        }
+      }
+
       await _storageService.saveLessons(_lessons);
       notifyListeners();
     }
@@ -446,52 +686,140 @@ class DeckProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> restoreBackup(String jsonString) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _storageService.restoreBackupJson(jsonString);
+      _decks = await _storageService.loadDecks();
+      _folders = await _storageService.loadFolders();
+      _lessons = await _storageService.loadLessons();
+      _courses = await _storageService.loadCourses();
+      _reviews = await _storageService.loadReviewLogs();
+      _timeLogs = await _storageService.loadTimeLogs();
+      _noteTheme = await _storageService.getNoteTheme();
+      _customThemeStyles = await _storageService.getCustomThemeStyles();
+    } catch (e) {
+      print('Failed to restore backup: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> deleteCourse(String id, {bool deleteFolderToo = true}) async {
     final course = _courses.where((c) => c.id == id).firstOrNull;
     if (course != null) {
       final courseTitle = course.title;
       final cleanCourseTitle = courseTitle.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 
-      final matchingFolderIds = {course.id};
+      // 1. Delete physical files from course items and cover image
+      for (final module in course.modules) {
+        for (final item in module.items) {
+          await StorageService.deleteLocalFile(item.path);
+          await StorageService.deleteLocalFile(item.fileKey);
+        }
+      }
+      await StorageService.deleteLocalFile(course.coverImageUrl);
+
+      final Set<String> foldersToDeleteIds = {};
+      final Set<String> matchedFolderIds = {course.id};
+
       if (deleteFolderToo) {
         final matchingFolders = _folders.where((f) {
           final cleanFolderName = f.name.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
           return f.id == id || cleanFolderName == cleanCourseTitle;
         }).toList();
-        matchingFolderIds.addAll(matchingFolders.map((f) => f.id));
+        
+        for (final folder in matchingFolders) {
+          // Check if this folder contains at least one notes file (Lesson with isNote == true or edited content)
+          final folderLessons = _lessons.where((l) => l.folderId == folder.id).toList();
+          bool hasNotes = false;
+          for (final l in folderLessons) {
+            if (l.isNote) {
+              hasNotes = true;
+              break;
+            }
+            if (l.content.trim().isNotEmpty && 
+                !l.content.contains('Live course video stream for') && 
+                !l.content.contains('Live course video stream')) {
+              hasNotes = true;
+              break;
+            }
+          }
+
+          if (!hasNotes) {
+            // Folder is empty of notes, we can delete it
+            foldersToDeleteIds.add(folder.id);
+            matchedFolderIds.add(folder.id);
+            
+            // Delete notes directory on disk only if it is empty
+            if (await NotesStorageService.isClassNotesFolderEmpty(folder.name)) {
+              await NotesStorageService.deleteClassNotesFolder(folder.name);
+            }
+          }
+        }
+
+        // Delete notes directory for this course on disk only if it is empty
+        if (await NotesStorageService.isClassNotesFolderEmpty(courseTitle)) {
+          await NotesStorageService.deleteClassNotesFolder(courseTitle);
+        }
       }
 
-      // Collect card IDs from all decks corresponding to these folders/courses to remove from universal deck
-      final decksToDelete = _decks.where((d) => d.folderId != null && matchingFolderIds.contains(d.folderId)).toList();
+      // 3. Collect & delete decks in this course/folder ONLY for deleted folders
+      final decksToDelete = _decks.where((d) => d.folderId != null && matchedFolderIds.contains(d.folderId) && (foldersToDeleteIds.contains(d.folderId) || d.folderId == course.id)).toList();
       final cardIdsToRemove = decksToDelete.expand((d) => d.cards).map((c) => c.id).toSet();
+      for (final d in decksToDelete) {
+        for (final c in d.cards) {
+          if (c.imageUrl != null && c.imageUrl!.isNotEmpty) {
+            await StorageService.deleteLocalFile(c.imageUrl);
+          }
+        }
+      }
       final univIdx = _decks.indexWhere((d) => d.id == 'universal');
       if (univIdx != -1 && cardIdsToRemove.isNotEmpty) {
         _decks[univIdx].cards.removeWhere((c) => cardIdsToRemove.contains(c.id));
       }
+      if (cardIdsToRemove.isNotEmpty) {
+        _reviews.removeWhere((r) => cardIdsToRemove.contains(r.cardId));
+        await _storageService.saveReviewLogs(_reviews);
+      }
+
+      // 4. Collect & delete lessons in this course/folder ONLY for deleted folders
+      final lessonsToDelete = _lessons.where((l) {
+        if (l.folderId != null && matchedFolderIds.contains(l.folderId)) {
+          return foldersToDeleteIds.contains(l.folderId) || l.folderId == course.id;
+        }
+        final cleanTopic = l.topic.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+        return cleanTopic == cleanCourseTitle && foldersToDeleteIds.isNotEmpty;
+      }).toList();
+
+      for (final l in lessonsToDelete) {
+        await StorageService.deleteLocalFile(l.pdfUrl);
+        await StorageService.deleteLocalFile(l.videoUrl);
+        await StorageService.deleteLocalFile(l.imageUrl);
+        if (l.multimedia != null) {
+          for (final m in l.multimedia!) {
+            await StorageService.deleteLocalFile(m.url);
+          }
+        }
+      }
+
+      final lessonIdsToRemove = lessonsToDelete.map((l) => l.id).toSet();
+      _lessons.removeWhere((l) => lessonIdsToRemove.contains(l.id));
 
       if (deleteFolderToo) {
-        final matchingFolders = _folders.where((f) {
-          final cleanFolderName = f.name.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
-          return f.id == id || cleanFolderName == cleanCourseTitle;
-        }).toList();
-
-        for (var folder in matchingFolders) {
-          _folders.removeWhere((f) => f.id == folder.id);
-          _decks.removeWhere((d) => d.folderId == folder.id);
-          _lessons.removeWhere((l) => l.folderId == folder.id);
-        }
-
-        // Also delete note pages created under this course title/topic
-        _lessons.removeWhere((l) {
-          final cleanTopic = l.topic.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
-          return cleanTopic == cleanCourseTitle;
-        });
-
-        await _storageService.saveFolders(_folders);
-        await _storageService.saveDecks(_decks);
-        await _storageService.saveLessons(_lessons);
+        _folders.removeWhere((f) => foldersToDeleteIds.contains(f.id));
+        _decks.removeWhere((d) => d.folderId != null && foldersToDeleteIds.contains(d.folderId));
       }
+
+      await _storageService.saveFolders(_folders);
+      await _storageService.saveDecks(_decks);
+      await _storageService.saveLessons(_lessons);
     }
+
     _courses.removeWhere((c) => c.id == id);
     await _storageService.saveCourses(_courses);
     notifyListeners();

@@ -126,15 +126,6 @@ class Sidebar extends StatelessWidget {
                           ),
                         ],
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Dart & CS Accelerator',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF8792A2),
-                          fontFamily: 'monospace',
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -478,8 +469,45 @@ class Sidebar extends StatelessWidget {
               ),
             ),
           ),
+          
+          // Style Notes Button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: OutlinedButton.icon(
+                onPressed: () => _showNoteStyleModal(context),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  backgroundColor: const Color(0xFFF8FAFC),
+                  foregroundColor: const Color(0xFF475569),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.palette_outlined, size: 18, color: Color(0xFF2563EB)),
+                label: const Text(
+                  'STYLE MY NOTES',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  void _showNoteStyleModal(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => const NoteStyleDialog(),
     );
   }
 
@@ -496,33 +524,6 @@ class Sidebar extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: Color(0xFF94A3B8),
               letterSpacing: 1.0,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: isActive ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.timer_outlined,
-                  size: 10,
-                  color: isActive ? const Color(0xFF2563EB) : const Color(0xFF64748B),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  pomodoroTime,
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.bold,
-                    color: isActive ? const Color(0xFF2563EB) : const Color(0xFF64748B),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -824,6 +825,478 @@ class Sidebar extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class NoteStyleDialog extends StatefulWidget {
+  const NoteStyleDialog({super.key});
+
+  @override
+  State<NoteStyleDialog> createState() => _NoteStyleDialogState();
+}
+
+class _NoteStyleDialogState extends State<NoteStyleDialog> {
+  late String _selectedTheme;
+  late Map<String, String> _customStyles;
+
+  final List<String> _themePresets = [
+    'GitHub Light',
+    'GitHub Dark',
+    'Solarized Dark',
+    'Soft Sepia',
+    'Custom Theme'
+  ];
+
+  final Map<String, List<String>> _colorOptions = {
+    'bg': ['#FFFFFF', '#F8FAFC', '#F1F5F9', '#FFFDF5', '#F5F5DC', '#0F172A', '#0D1117', '#1E1E1E', '#0B132B'],
+    'text': ['#000000', '#1E293B', '#475569', '#FFFFFF', '#CBD5E1', '#E2E8F0', '#FBBF24', '#38BDF8', '#839496'],
+    'link': ['#0969DA', '#2563EB', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#58A6FF'],
+    'border': ['#D0D7DE', '#E2E8F0', '#CBD5E1', '#30363D', '#475569', '#334155', '#F59E0B', '#073642', '#00000000'],
+  };
+
+  final Map<String, String> _colorNames = {
+    '#FFFFFF': 'White',
+    '#F8FAFC': 'Slate 50',
+    '#F1F5F9': 'Slate 100',
+    '#FFFDF5': 'Paper',
+    '#F5F5DC': 'Beige',
+    '#0F172A': 'Slate 900',
+    '#0D1117': 'GH Dark',
+    '#1E1E1E': 'VS Code',
+    '#0B132B': 'Midnight',
+    
+    '#000000': 'Black',
+    '#1E293B': 'Charcoal',
+    '#475569': 'Grey',
+    '#CBD5E1': 'Silver',
+    
+    '#0969DA': 'GH Blue',
+    '#2563EB': 'Indigo',
+    '#3B82F6': 'Blue',
+    '#8B5CF6': 'Purple',
+    '#10B981': 'Emerald',
+    '#F59E0B': 'Amber',
+    '#EF4444': 'Red',
+    '#EC4899': 'Pink',
+    '#58A6FF': 'Sky Blue',
+    
+    '#D0D7DE': 'GH Border',
+    '#E2E8F0': 'Soft Line',
+    '#30363D': 'GH Dark Line',
+    '#00000000': 'None',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    final provider = Provider.of<DeckProvider>(context, listen: false);
+    _selectedTheme = provider.noteTheme;
+    _customStyles = Map<String, String>.from(provider.customThemeStyles);
+  }
+
+  Color _getColorFromHex(String hex) {
+    if (hex == '#00000000') return Colors.transparent;
+    try {
+      var h = hex.replaceAll('#', '').trim();
+      if (h.length == 6) h = 'FF$h';
+      return Color(int.parse(h, radix: 16));
+    } catch (_) {
+      return Colors.grey;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = Provider.of<DeckProvider>(context);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 16,
+      backgroundColor: Colors.white,
+      child: Container(
+        width: 600,
+        constraints: const BoxConstraints(maxHeight: 750),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.palette, color: Color(0xFF2563EB), size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      const Text(
+                        'Style My Notes',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Color(0xFF64748B)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+            // Body
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  const Text(
+                    'THEME PRESETS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF94A3B8),
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Preset cards grid
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: _themePresets.map((presetName) {
+                      final isSelected = _selectedTheme == presetName;
+                      
+                      Color cardBg = Colors.white;
+                      Color cardText = const Color(0xFF24292F);
+                      Color cardLink = const Color(0xFF0969DA);
+                      Color cardBorder = const Color(0xFFD0D7DE);
+
+                      if (presetName == 'GitHub Light') {
+                        cardBg = const Color(0xFFFFFFFF);
+                        cardText = const Color(0xFF24292F);
+                        cardLink = const Color(0xFF0969DA);
+                        cardBorder = const Color(0xFFD0D7DE);
+                      } else if (presetName == 'GitHub Dark') {
+                        cardBg = const Color(0xFF0D1117);
+                        cardText = const Color(0xFFC9D1D9);
+                        cardLink = const Color(0xFF58A6FF);
+                        cardBorder = const Color(0xFF30363D);
+                      } else if (presetName == 'Solarized Dark') {
+                        cardBg = const Color(0xFF002B36);
+                        cardText = const Color(0xFF839496);
+                        cardLink = const Color(0xFF2AA198);
+                        cardBorder = const Color(0xFF073642);
+                      } else if (presetName == 'Soft Sepia') {
+                        cardBg = const Color(0xFFFBF0D9);
+                        cardText = const Color(0xFF433422);
+                        cardLink = const Color(0xFF8C6239);
+                        cardBorder = const Color(0xFFE6D8B8);
+                      } else {
+                        // Custom Theme Preview from current styles
+                        cardBg = _getColorFromHex(_customStyles['bg'] ?? '#ffffff');
+                        cardText = _getColorFromHex(_customStyles['text'] ?? '#24292f');
+                        cardLink = _getColorFromHex(_customStyles['link'] ?? '#0969da');
+                        cardBorder = _getColorFromHex(_customStyles['border'] ?? '#d0d7de');
+                      }
+
+                      return InkWell(
+                        onTap: () {
+                          setState(() {
+                            _selectedTheme = presetName;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: 165,
+                          height: 90,
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFF2563EB) : cardBorder,
+                              width: isSelected ? 2.5 : 1.2,
+                            ),
+                            boxShadow: [
+                              if (isSelected)
+                                BoxShadow(
+                                  color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                )
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        presetName.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: isSelected ? const Color(0xFF2563EB) : cardText.withValues(alpha: 0.7),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      const Icon(Icons.check_circle, size: 14, color: Color(0xFF2563EB)),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Abc notes content',
+                                      style: TextStyle(fontSize: 10, color: cardText),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'https://link.com',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: cardLink,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  // Custom theme parameters
+                  if (_selectedTheme == 'Custom Theme') ...[
+                    const SizedBox(height: 28),
+                    const Divider(color: Color(0xFFE2E8F0)),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'CUSTOM STYLING CONTROLS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF94A3B8),
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildCustomColorSection(
+                      title: 'Background Color',
+                      type: 'bg',
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildCustomColorSection(
+                      title: 'Text Color',
+                      type: 'text',
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildCustomColorSection(
+                      title: 'Link / Accent Color',
+                      type: 'link',
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildCustomColorSection(
+                      title: 'Border Color',
+                      type: 'border',
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Font Size Slider
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Font Size',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF334155),
+                              ),
+                            ),
+                            Text(
+                              '${_customStyles['font_size'] ?? '16'} px',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Slider(
+                          value: double.tryParse(_customStyles['font_size'] ?? '16') ?? 16.0,
+                          min: 12.0,
+                          max: 24.0,
+                          divisions: 12,
+                          activeColor: const Color(0xFF2563EB),
+                          inactiveColor: const Color(0xFFE2E8F0),
+                          onChanged: (val) {
+                            setState(() {
+                              _customStyles['font_size'] = val.round().toString();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Footer actions
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+                  ),
+                  const SizedBox(width: 12),
+                   ElevatedButton(
+                    onPressed: () async {
+                      final navigator = Navigator.of(context);
+                      final scaffoldMessenger = ScaffoldMessenger.of(context);
+                      await provider.setNoteTheme(_selectedTheme);
+                      await provider.setCustomThemeStyles(_customStyles);
+                      if (mounted) {
+                        navigator.pop();
+                        scaffoldMessenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('✨ Note styles updated successfully!'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text('Apply Style', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomColorSection({
+    required String title,
+    required String type,
+  }) {
+    final colors = _colorOptions[type] ?? [];
+    final selectedVal = _customStyles[type] ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF334155),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: colors.map((hex) {
+            final isColorSelected = selectedVal.toUpperCase() == hex.toUpperCase();
+            final itemColor = _getColorFromHex(hex);
+            final colorName = _colorNames[hex] ?? hex;
+
+            return Tooltip(
+              message: colorName,
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _customStyles[type] = hex;
+                  });
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: itemColor == Colors.transparent ? Colors.white : itemColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isColorSelected 
+                          ? const Color(0xFF2563EB) 
+                          : (hex == '#FFFFFF' || hex == '#00000000' ? const Color(0xFFCBD5E1) : Colors.transparent),
+                      width: isColorSelected ? 2.5 : 1,
+                    ),
+                    boxShadow: [
+                      if (isColorSelected)
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        )
+                    ],
+                  ),
+                  child: Center(
+                    child: hex == '#00000000'
+                        ? const Icon(Icons.close, size: 16, color: Colors.red)
+                        : (isColorSelected
+                            ? Icon(
+                                Icons.check,
+                                size: 16,
+                                color: itemColor.computeLuminance() > 0.5 ? Colors.black87 : Colors.white,
+                              )
+                            : const SizedBox.shrink()),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }
