@@ -504,6 +504,17 @@ class DeckProvider extends ChangeNotifier {
   // --- Lessons ---
   Future<void> addLesson(Lesson lesson) async {
     _lessons.add(lesson);
+    if (lesson.isNote) {
+      try {
+        await NotesStorageService.appendNoteToClass(
+          className: lesson.topic.isEmpty ? 'General' : lesson.topic,
+          lectureTitle: lesson.title,
+          noteContent: lesson.content,
+        );
+      } catch (e) {
+        print('Error appending note to internal storage: $e');
+      }
+    }
     await _storageService.saveLessons(_lessons);
     notifyListeners();
   }
@@ -662,6 +673,23 @@ class DeckProvider extends ChangeNotifier {
         }
         if (courseModified) {
           await _storageService.saveCourses(_courses);
+        }
+      }
+
+      if (lesson.isNote) {
+        try {
+          // Sync with physical file system inside SelfUni_Notes
+          await NotesStorageService.deleteNoteFromClass(
+            className: oldLesson.topic.isEmpty ? 'General' : oldLesson.topic,
+            lectureTitle: oldTitle,
+          );
+          await NotesStorageService.appendNoteToClass(
+            className: lesson.topic.isEmpty ? 'General' : lesson.topic,
+            lectureTitle: lesson.title,
+            noteContent: lesson.content,
+          );
+        } catch (e) {
+          print('Error updating note in internal storage: $e');
         }
       }
 

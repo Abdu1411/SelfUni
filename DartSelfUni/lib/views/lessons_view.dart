@@ -378,6 +378,16 @@ class _LessonsViewState extends State<LessonsView> {
     // Prepare Display Folders
     final List<Folder> displayFolders = folders.where((f) => f.id != 'unfiled').toList();
 
+    // Add virtual General / Unfiled folder if there are any unfiled notes
+    final hasUnfiledNotes = allLessons.any((l) => l.isNote && (l.folderId == null || l.folderId == 'unfiled' || !folders.any((f) => f.id == l.folderId)));
+    if (hasUnfiledNotes) {
+      displayFolders.add(Folder(
+        id: 'unfiled',
+        name: 'General / Unfiled Notes',
+        color: '#64748B',
+      ));
+    }
+
     final activeFolder = displayFolders.firstWhere(
       (f) => f.id == _activeFolderId,
       orElse: () => displayFolders.isNotEmpty ? displayFolders.first : Folder(id: '', name: 'Course Notes'),
@@ -831,7 +841,12 @@ class _LessonsViewState extends State<LessonsView> {
   }
 
   Widget _buildLessonGrid(List<Lesson> allLessons, Folder activeFolder, bool isMobile, double maxWidth, DeckProvider deckProvider) {
-    final lessons = allLessons.where((l) => l.folderId == activeFolder.id).toList();
+    final lessons = allLessons.where((l) {
+      if (activeFolder.id == 'unfiled') {
+        return l.folderId == null || l.folderId == 'unfiled' || !deckProvider.folders.any((f) => f.id == l.folderId);
+      }
+      return l.folderId == activeFolder.id;
+    }).toList();
 
     int crossAxisCount = 1;
     if (maxWidth > 1200) {

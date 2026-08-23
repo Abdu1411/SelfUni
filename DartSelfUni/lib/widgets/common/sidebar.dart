@@ -64,7 +64,8 @@ class Sidebar extends StatelessWidget {
       if (!l.isNote) return false;
       final hasFolder = l.folderId != null && l.folderId != 'unfiled' && activeFolderIds.contains(l.folderId);
       final hasCourse = activeCourseTitles.contains(l.topic.toLowerCase());
-      return hasFolder || hasCourse;
+      final isUnfiled = l.folderId == null || l.folderId == 'unfiled' || !activeFolderIds.contains(l.folderId);
+      return hasFolder || hasCourse || isUnfiled;
     }).toList();
 
     final activeLiveLectures = deckProvider.lessons.where((l) {
