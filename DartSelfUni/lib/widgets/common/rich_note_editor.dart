@@ -774,32 +774,26 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
     final lineCount = text.isEmpty ? 0 : '\n'.allMatches(text).length + 1;
 
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
-        ],
+      decoration: const BoxDecoration(
+        color: Color(0xFF0B132B),
       ),
       child: Column(
         children: [
-          // Top Header Toolbar
+          // Header Controls Toolbar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC), // slate-50
-              borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-              border: Border(bottom: BorderSide(color: AppColors.border)),
+              color: Color(0xFF0B132B),
+              border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
             ),
             child: Row(
               children: [
-                const Icon(Icons.edit_note, color: AppColors.primary, size: 20),
+                const Icon(Icons.edit_note, size: 20, color: Color(0xFF38BDF8)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     widget.title ?? 'Lecture Notes Workspace',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -815,13 +809,13 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: _isGraduated
-                              ? const Color(0xFFFEF3C7)
-                              : _getMasteryPillColor(_masteryPercentage).withValues(alpha: 0.12),
+                              ? const Color(0x33F59E0B)
+                              : _getMasteryPillColor(_masteryPercentage).withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: _isGraduated
-                                ? const Color(0xFFF59E0B)
-                                : _getMasteryPillColor(_masteryPercentage).withValues(alpha: 0.35),
+                                ? const Color(0x66F59E0B)
+                                : _getMasteryPillColor(_masteryPercentage).withValues(alpha: 0.4),
                           ),
                         ),
                         child: Row(
@@ -838,7 +832,7 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: _isGraduated
-                                    ? const Color(0xFF065F46)
+                                    ? const Color(0xFFF59E0B)
                                     : _getMasteryPillColor(_masteryPercentage),
                               ),
                             ),
@@ -862,7 +856,7 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                           _isEditMode ? CupertinoIcons.eyeglasses : Icons.edit,
                           size: 20,
                         ),
-                        color: _isEditMode ? AppColors.primary : const Color(0xFF64748B),
+                        color: _isEditMode ? const Color(0xFF38BDF8) : const Color(0xFF94A3B8),
                         tooltip: _isEditMode ? 'Preview Mode' : 'Edit Mode',
                       ),
                       const SizedBox(width: 4),
@@ -879,7 +873,7 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                         icon: Icon(
                           Icons.g_translate_outlined,
                           size: 20,
-                          color: _viewMode == NoteEditorViewMode.previewArabic ? const Color(0xFF059669) : const Color(0xFF64748B),
+                          color: _viewMode == NoteEditorViewMode.previewArabic ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
                         ),
                         tooltip: _viewMode == NoteEditorViewMode.previewArabic ? 'Exit Arabic Preview' : 'Preview in Arabic • معاينة بالعربية',
                       ),
@@ -888,7 +882,7 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                       // Manual Save Button
                       IconButton(
                         onPressed: _manualSave,
-                        icon: const Icon(Icons.save_outlined, size: 20, color: AppColors.primary),
+                        icon: const Icon(Icons.save_outlined, size: 20, color: Color(0xFF38BDF8)),
                         tooltip: 'Save Notes',
                       ),
                       const SizedBox(width: 8),
@@ -907,8 +901,8 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                       if (widget.onSRS != null) ...[
                         TextButton.icon(
                           onPressed: widget.onSRS,
-                          icon: const Icon(Icons.style_outlined, size: 16, color: AppColors.primary),
-                          label: const Text('SRS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: AppColors.primary)),
+                          icon: const Icon(Icons.style_outlined, size: 16, color: Color(0xFF38BDF8)),
+                          label: const Text('SRS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: Color(0xFF38BDF8))),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             minimumSize: Size.zero,
@@ -921,7 +915,7 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                       // Export to .md File Button
                       IconButton(
                         onPressed: widget.onCustomExport ?? _exportNotesToFile,
-                        icon: const Icon(Icons.file_download_outlined, size: 20, color: Color(0xFF64748B)),
+                        icon: const Icon(Icons.file_download_outlined, size: 20, color: Color(0xFF94A3B8)),
                         tooltip: 'Export Notes to .md File',
                       ),
 
@@ -932,16 +926,16 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.amber.shade50,
+                            color: const Color(0x33F59E0B),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.amber.shade200),
+                            border: Border.all(color: const Color(0x66F59E0B)),
                           ),
-                          child: Row(
+                          child: const Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber)),
+                            children: [
+                              SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFBBF24))),
                               SizedBox(width: 4),
-                              Text('Saving...', style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold)),
+                              Text('Saving...', style: TextStyle(fontSize: 10, color: Color(0xFFFBBF24), fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),
@@ -949,16 +943,16 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.success.withValues(alpha: 0.1),
+                            color: const Color(0x3310B981),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                            border: Border.all(color: const Color(0x6610B981)),
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.check_circle, size: 12, color: AppColors.success),
+                              Icon(Icons.check_circle, size: 12, color: Color(0xFF10B981)),
                               SizedBox(width: 4),
-                              Text('Saved', style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.bold)),
+                              Text('Saved', style: TextStyle(fontSize: 10, color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),
@@ -975,48 +969,58 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: const BoxDecoration(
-                color: Color(0xFFF1F5F9), // slate-100
-                border: Border(bottom: BorderSide(color: AppColors.border)),
+                color: Color(0xFF162238),
+                border: Border(bottom: BorderSide(color: Color(0xFF2A3B5C))),
               ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    const Text('INSERT: ', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                    const Text('INSERT: ', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
                     const SizedBox(width: 4),
                     ActionChip(
-                      avatar: const Icon(Icons.add_photo_alternate_outlined, size: 14, color: Color(0xFF0284C7)),
+                      avatar: const Icon(Icons.add_photo_alternate_outlined, size: 14, color: Color(0xFF38BDF8)),
                       label: const Text('Add Image'),
-                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      backgroundColor: const Color(0xFF1E293B),
+                      side: const BorderSide(color: Color(0xFF2A3B5C)),
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                       onPressed: () => _showImageSourceDialog(context),
                     ),
                     const SizedBox(width: 6),
                     ActionChip(
-                      avatar: const Icon(Icons.code, size: 14, color: AppColors.primary),
+                      avatar: const Icon(Icons.code, size: 14, color: Color(0xFF818CF8)),
                       label: const Text('Dart Code'),
-                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      backgroundColor: const Color(0xFF1E293B),
+                      side: const BorderSide(color: Color(0xFF2A3B5C)),
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                       onPressed: () => _insertSnippet('\n```dart\n// Code snippet\nvoid main() {\n  \n}\n```\n'),
                     ),
                     const SizedBox(width: 6),
                     ActionChip(
-                      avatar: const Icon(Icons.lightbulb_outline, size: 14, color: Colors.amber),
+                      avatar: const Icon(Icons.lightbulb_outline, size: 14, color: Color(0xFFFBBF24)),
                       label: const Text('Key Insight'),
-                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      backgroundColor: const Color(0xFF1E293B),
+                      side: const BorderSide(color: Color(0xFF2A3B5C)),
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                       onPressed: () => _insertSnippet('\n> 💡 **Key Takeaway / Invariant:** \n'),
                     ),
                     const SizedBox(width: 6),
                     ActionChip(
-                      avatar: const Icon(Icons.functions, size: 14, color: Colors.purple),
+                      avatar: const Icon(Icons.functions, size: 14, color: Color(0xFFA855F7)),
                       label: const Text('Big-O Math'),
-                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      backgroundColor: const Color(0xFF1E293B),
+                      side: const BorderSide(color: Color(0xFF2A3B5C)),
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                       onPressed: () => _insertSnippet(' \$O(N \\log N)\$ '),
                     ),
                     if (widget.showTimestamp) ...[
                       const SizedBox(width: 6),
                       ActionChip(
-                        avatar: const Icon(Icons.timer_outlined, size: 14, color: Colors.teal),
+                        avatar: const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF34D399)),
                         label: const Text('Timestamp'),
-                        labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        backgroundColor: const Color(0xFF1E293B),
+                        side: const BorderSide(color: Color(0xFF2A3B5C)),
+                        labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                         onPressed: () {
                           final duration = widget.onTimestampRequested != null
                               ? widget.onTimestampRequested!()
@@ -1039,9 +1043,9 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                   ? Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC), // slate-50
+                        color: const Color(0xFF162238),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(color: const Color(0xFF2A3B5C)),
                       ),
                       child: TextField(
                         controller: _controller,
@@ -1051,10 +1055,11 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                           fontFamily: 'Consolas, Courier New, monospace',
                           fontSize: 15.5,
                           height: 1.7,
-                          color: AppColors.textPrimary,
+                          color: Colors.white,
                         ),
                         decoration: const InputDecoration(
                           hintText: 'Type lecture notes, code snippets (```dart ... ```), math formulas (\$O(N \\log N)\$), and timestamps...\nAuto-saves continuously.',
+                          hintStyle: TextStyle(color: Color(0xFF64748B)),
                           border: InputBorder.none,
                           isDense: true,
                         ),

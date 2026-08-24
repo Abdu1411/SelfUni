@@ -91,16 +91,16 @@ class _PdfViewerViewState extends State<PdfViewerView> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF162238),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: widget.onNavigateBack,
         ),
         title: Text(
           _activeLesson.title,
           style: const TextStyle(
-            color: AppColors.textPrimary,
+            color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -111,14 +111,14 @@ class _PdfViewerViewState extends State<PdfViewerView> {
           const PomodoroTimerWidget(),
           const SizedBox(width: 8),
           IconButton(
-            icon: Icon(_isSidebarOpen ? Icons.view_sidebar : Icons.view_sidebar_outlined, color: AppColors.textSecondary),
+            icon: Icon(_isSidebarOpen ? Icons.view_sidebar : Icons.view_sidebar_outlined, color: const Color(0xFF94A3B8)),
             tooltip: _isSidebarOpen ? 'Hide Documents Sidebar' : 'Show Documents Sidebar',
             onPressed: () => setState(() => _isSidebarOpen = !_isSidebarOpen),
           ),
           IconButton(
             icon: Icon(
               _isPdfVisible ? Icons.menu_book : Icons.menu_book_outlined,
-              color: _isPdfVisible ? AppColors.primary : const Color(0xFF64748B),
+              color: _isPdfVisible ? const Color(0xFF38BDF8) : const Color(0xFF94A3B8),
             ),
             tooltip: _isPdfVisible ? 'Hide Document (Full Screen Notes)' : 'Show Document',
             onPressed: () => setState(() => _isPdfVisible = !_isPdfVisible),
@@ -133,8 +133,8 @@ class _PdfViewerViewState extends State<PdfViewerView> {
             Container(
               width: 280,
               decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                border: Border(right: BorderSide(color: AppColors.border)),
+                color: Color(0xFF0B132B),
+                border: Border(right: BorderSide(color: Color(0xFF1E293B))),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -142,7 +142,7 @@ class _PdfViewerViewState extends State<PdfViewerView> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: const BoxDecoration(
-                      border: Border(bottom: BorderSide(color: AppColors.border)),
+                      border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -152,19 +152,19 @@ class _PdfViewerViewState extends State<PdfViewerView> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF64748B),
+                            color: Color(0xFF94A3B8),
                             letterSpacing: 0.8,
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE2E8F0),
+                            color: const Color(0xFF1E293B),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '${pdfLessons.length}',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
                           ),
                         ),
                       ],
@@ -187,10 +187,10 @@ class _PdfViewerViewState extends State<PdfViewerView> {
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 decoration: BoxDecoration(
-                                  color: isActive ? const Color(0xFFEFF6FF) : Colors.transparent,
+                                  color: isActive ? const Color(0xFF1E293B) : Colors.transparent,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: isActive ? const Color(0xFFBFDBFE) : Colors.transparent,
+                                    color: isActive ? const Color(0x4438BDF8) : Colors.transparent,
                                   ),
                                 ),
                                 child: Material(
@@ -201,7 +201,7 @@ class _PdfViewerViewState extends State<PdfViewerView> {
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     leading: Icon(
                                       Icons.picture_as_pdf,
-                                      color: isActive ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+                                      color: isActive ? const Color(0xFF38BDF8) : const Color(0xFF94A3B8),
                                       size: 18,
                                     ),
                                     title: Text(
@@ -210,7 +210,7 @@ class _PdfViewerViewState extends State<PdfViewerView> {
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                                        color: isActive ? const Color(0xFF1E3A8A) : AppColors.textPrimary,
+                                        color: isActive ? const Color(0xFF38BDF8) : Colors.white,
                                         fontSize: 13,
                                       ),
                                     ),
@@ -224,121 +224,135 @@ class _PdfViewerViewState extends State<PdfViewerView> {
               ),
             ),
 
-          // PDF Viewer Pane
-          if (_isPdfVisible)
-            Expanded(
-              flex: 4,
-              child: Container(
-                decoration: const BoxDecoration(
-                  border: Border(right: BorderSide(color: AppColors.border)),
-                ),
-                child: _activeLesson.pdfUrl != null
-                    ? Stack(
-                        children: [
-                          SfPdfViewer.file(
-                            File(_activeLesson.pdfUrl!),
-                            key: ValueKey('pdf_viewer_${_activeLesson.id}'),
-                            controller: _pdfViewerController,
-                            onDocumentLoaded: (PdfDocumentLoadedDetails details) {
-                              setState(() {
-                                _pageCount = details.document.pages.count;
-                                _currentPage = _pdfViewerController.pageNumber;
-                              });
-                            },
-                            onPageChanged: (PdfPageChangedDetails details) {
-                              setState(() {
-                                _currentPage = details.newPageNumber;
-                              });
-                            },
-                            onZoomLevelChanged: (PdfZoomDetails details) {
-                              setState(() {
-                                _zoomLevel = details.newZoomLevel;
-                              });
-                            },
-                          ),
-                          // PDF Controls Toolbar Overlay
-                          Positioned(
-                            bottom: 16,
-                            left: 0,
-                            right: 0,
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.7),
-                                  borderRadius: BorderRadius.circular(24),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.zoom_out, color: Colors.white, size: 20),
-                                      onPressed: () {
-                                        _pdfViewerController.zoomLevel = (_zoomLevel - 0.25).clamp(0.5, 3.0);
-                                      },
-                                    ),
-                                    Text(
-                                      '${(_zoomLevel * 100).toInt()}%',
-                                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.zoom_in, color: Colors.white, size: 20),
-                                      onPressed: () {
-                                        _pdfViewerController.zoomLevel = (_zoomLevel + 0.25).clamp(0.5, 3.0);
-                                      },
-                                    ),
-                                    Container(width: 1, height: 24, color: Colors.white38, margin: const EdgeInsets.symmetric(horizontal: 8)),
-                                    IconButton(
-                                      icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white, size: 20),
-                                      onPressed: () {
-                                        _pdfViewerController.previousPage();
-                                      },
-                                    ),
-                                    Text(
-                                      '$_currentPage / ${_pageCount > 0 ? _pageCount : "-"}',
-                                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
-                                      onPressed: () {
-                                        _pdfViewerController.nextPage();
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : const Center(
-                        child: Text('PDF not found'),
-                      ),
-              ),
-            ),
-          
-          // Notes Pane
+          // Main Workspace: PDF Viewer & Notes Editor (80% of window width)
           Expanded(
-            flex: 5,
-            child: RichNoteEditor(
-              key: ValueKey('pdf_notes_${_activeLesson.id}'),
-              noteKey: _activeLesson.id,
-              initialContent: _currentContent,
-              onChanged: (val) {
-                _currentContent = val;
-                _activeLesson.content = val;
-                context.read<DeckProvider>().updateLesson(_activeLesson);
-              },
-              title: _activeLesson.title,
-              onSave: _saveNotes,
-              showTimestamp: false,
+            child: Center(
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width >= 900
+                    ? MediaQuery.of(context).size.width * 0.8
+                    : double.infinity,
+                child: Row(
+                  children: [
+                    // PDF Viewer Pane
+                    if (_isPdfVisible)
+                      Expanded(
+                        flex: 1,
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            border: Border(right: BorderSide(color: AppColors.border)),
+                          ),
+                          child: _activeLesson.pdfUrl != null
+                              ? Stack(
+                                  children: [
+                                    SfPdfViewer.file(
+                                      File(_activeLesson.pdfUrl!),
+                                      key: ValueKey('pdf_viewer_${_activeLesson.id}'),
+                                      controller: _pdfViewerController,
+                                      onDocumentLoaded: (PdfDocumentLoadedDetails details) {
+                                        setState(() {
+                                          _pageCount = details.document.pages.count;
+                                          _currentPage = _pdfViewerController.pageNumber;
+                                        });
+                                      },
+                                      onPageChanged: (PdfPageChangedDetails details) {
+                                        setState(() {
+                                          _currentPage = details.newPageNumber;
+                                        });
+                                      },
+                                      onZoomLevelChanged: (PdfZoomDetails details) {
+                                        setState(() {
+                                          _zoomLevel = details.newZoomLevel;
+                                        });
+                                      },
+                                    ),
+                                    // PDF Controls Toolbar Overlay
+                                    Positioned(
+                                      bottom: 16,
+                                      left: 0,
+                                      right: 0,
+                                      child: Center(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.7),
+                                            borderRadius: BorderRadius.circular(24),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.2),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(Icons.zoom_out, color: Colors.white, size: 20),
+                                                onPressed: () {
+                                                  _pdfViewerController.zoomLevel = (_zoomLevel - 0.25).clamp(0.5, 3.0);
+                                                },
+                                              ),
+                                              Text(
+                                                '${(_zoomLevel * 100).toInt()}%',
+                                                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.zoom_in, color: Colors.white, size: 20),
+                                                onPressed: () {
+                                                  _pdfViewerController.zoomLevel = (_zoomLevel + 0.25).clamp(0.5, 3.0);
+                                                },
+                                              ),
+                                              Container(width: 1, height: 24, color: Colors.white38, margin: const EdgeInsets.symmetric(horizontal: 8)),
+                                              IconButton(
+                                                icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white, size: 20),
+                                                onPressed: () {
+                                                  _pdfViewerController.previousPage();
+                                                },
+                                              ),
+                                              Text(
+                                                '$_currentPage / ${_pageCount > 0 ? _pageCount : "-"}',
+                                                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
+                                                onPressed: () {
+                                                  _pdfViewerController.nextPage();
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : const Center(
+                                  child: Text('PDF not found'),
+                                ),
+                        ),
+                      ),
+                    
+                    // Notes Pane
+                    Expanded(
+                      flex: 1,
+                      child: RichNoteEditor(
+                        key: ValueKey('pdf_notes_${_activeLesson.id}'),
+                        noteKey: _activeLesson.id,
+                        initialContent: _currentContent,
+                        onChanged: (val) {
+                          _currentContent = val;
+                          _activeLesson.content = val;
+                          context.read<DeckProvider>().updateLesson(_activeLesson);
+                        },
+                        title: _activeLesson.title,
+                        onSave: _saveNotes,
+                        showTimestamp: false,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

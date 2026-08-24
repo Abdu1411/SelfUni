@@ -240,13 +240,13 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
     final isMobile = screenWidth < 800;
     
     return Container(
-      color: const Color(0xFFFAFAFA),
+      color: const Color(0xFF0B132B),
       child: Column(
         children: [
           _buildHeader(isMobile, activeFolder),
-          const Divider(height: 1, color: AppColors.border),
+          const Divider(height: 1, color: Color(0xFF1E293B)),
           _buildSearchBar(isMobile),
-          const Divider(height: 1, color: AppColors.border),
+          const Divider(height: 1, color: Color(0xFF1E293B)),
           
           Expanded(
             child: displayFolders.isEmpty && filteredLessons.isEmpty
@@ -265,7 +265,7 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
     
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 32, vertical: 24),
-      color: Colors.white,
+      color: const Color(0xFF162238),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -281,7 +281,7 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
                       children: [
                         if (_activeFolderId != null) ...[
                           IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Color(0xFF64748B), size: 20),
+                            icon: const Icon(Icons.arrow_back, color: Color(0xFF94A3B8), size: 20),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             onPressed: () => setState(() => _activeFolderId = null),
@@ -293,13 +293,13 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
                         Expanded(
                           child: Text(
                             _activeFolderId != null ? activeFolder.name : 'Live Lectures & Video Streams',
-                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -0.5),
+                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
                           ),
                         ),
                         if (_activeFolderId != null && activeFolder.id != 'unfiled') ...[
                           const SizedBox(width: 8),
                           PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, color: Color(0xFF64748B), size: 20),
+                            icon: const Icon(Icons.more_vert, color: Color(0xFF94A3B8), size: 20),
                             onSelected: (val) {
                               if (val == 'rename') {
                                 _openRenameFolderModal(context, activeFolder);
@@ -350,7 +350,7 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
                       _activeFolderId != null
                           ? 'Watch lectures, synchronized markdown notes, and extract automated AI flashcards.'
                           : 'Interactive video masterclasses with synchronized code notes and term breakdowns',
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
                     ),
                   ],
                 ),
@@ -396,21 +396,21 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
   Widget _buildSearchBar(bool isMobile) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 32, vertical: 16),
-      color: Colors.white,
+      color: const Color(0xFF162238),
       child: Row(
         children: [
           Expanded(
             child: Container(
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: const Color(0xFF2A3B5C)),
               ),
               child: TextField(
                 controller: _searchController,
                 onChanged: (val) => setState(() => _searchQuery = val),
-                style: const TextStyle(fontSize: 14),
+                style: const TextStyle(fontSize: 14, color: Colors.white),
                 decoration: const InputDecoration(
                   hintText: 'Search live streams and lectures...',
                   hintStyle: TextStyle(color: Color(0xFF94A3B8)),
@@ -428,8 +428,8 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
               icon: const Icon(Icons.arrow_back, size: 16),
               label: const Text('Back to Courses'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF64748B),
-                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                foregroundColor: const Color(0xFF94A3B8),
+                side: const BorderSide(color: Color(0xFF2A3B5C)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
@@ -442,12 +442,12 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
 
   Widget _buildFolderGrid(List<Folder> displayFolders, List<Lesson> allVideoLessons, bool isMobile, double maxWidth) {
     return GridView.builder(
-      padding: EdgeInsets.all(isMobile ? 16 : 32),
+      padding: EdgeInsets.all(isMobile ? 12 : 24),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 220,
-        crossAxisSpacing: 24,
-        mainAxisSpacing: 24,
-        mainAxisExtent: 160,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        mainAxisExtent: 85,
       ),
       itemCount: displayFolders.length,
       itemBuilder: (context, index) {
@@ -456,148 +456,119 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
 
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.border),
+            color: const Color(0xFF162238),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF2A3B5C)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.01),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
-          child: InkWell(
-            onTap: () => setState(() => _activeFolderId = folderObj.id),
-            borderRadius: BorderRadius.circular(24),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isSmallCard = constraints.maxHeight < 170 || constraints.maxWidth < 200;
-                final double iconSize = isSmallCard ? 24 : 40;
-                final double iconPadding = isSmallCard ? 10 : 20;
-                final double topSpacer = isSmallCard ? 12 : 24;
-                final double bottomSpacer = isSmallCard ? 8 : 16;
-                final double titleSize = isSmallCard ? 13 : 16;
-                final double contentPadding = isSmallCard ? 12 : 24;
-
-                return Stack(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => setState(() => _activeFolderId = folderObj.id),
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Row(
                   children: [
-                    Padding(
-                      padding: EdgeInsets.all(contentPadding),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0x33F43F5E),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0x66F43F5E)),
+                      ),
+                      child: const Icon(Icons.folder_outlined, color: Color(0xFFF43F5E), size: 20),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Center(
-                            child: Container(
-                              padding: EdgeInsets.all(iconPadding),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFF1F2),
-                                borderRadius: BorderRadius.circular(isSmallCard ? 12 : 20),
-                              ),
-                              child: Icon(Icons.folder_outlined, color: const Color(0xFFF43F5E), size: iconSize),
-                            ),
-                          ),
-                          SizedBox(height: topSpacer),
                           Text(
                             folderObj.name,
-                            style: TextStyle(fontSize: titleSize, fontWeight: FontWeight.w900, color: const Color(0xFF0F172A), height: 1.3),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white, height: 1.1),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (constraints.maxHeight >= 125) ...[
-                            SizedBox(height: bottomSpacer),
-                            Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.videocam_outlined, size: 12, color: Color(0xFF64748B)),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${folderLessons.length} ${folderLessons.length == 1 ? 'lecture' : 'lectures'}',
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                          const SizedBox(height: 2),
+                          Text(
+                            '${folderLessons.length} ${folderLessons.length == 1 ? 'lecture' : 'lectures'}',
+                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ),
                     ),
                     if (folderObj.id != 'unfiled')
-                      Positioned(
-                        top: isSmallCard ? 4 : 12,
-                        right: isSmallCard ? 4 : 12,
-                        child: PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
-                          padding: isSmallCard ? EdgeInsets.zero : const EdgeInsets.all(8),
-                          constraints: isSmallCard ? const BoxConstraints(minWidth: 40) : null,
-                          onSelected: (val) {
-                            if (val == 'open') {
-                              setState(() => _activeFolderId = folderObj.id);
-                            } else if (val == 'add') {
-                              _openImportCourseModal(context, folder: folderObj);
-                            } else if (val == 'rename') {
-                              _openRenameFolderModal(context, folderObj);
-                            } else if (val == 'delete') {
-                              _confirmDeleteFolder(context, folderObj);
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'open',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.folder_open, size: 16, color: Color(0xFF64748B)),
-                                  SizedBox(width: 8),
-                                  Text('Open Course Folder'),
-                                ],
-                              ),
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_horiz, color: Color(0xFF94A3B8), size: 18),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 40),
+                        onSelected: (val) {
+                          if (val == 'open') {
+                            setState(() => _activeFolderId = folderObj.id);
+                          } else if (val == 'add') {
+                            _openImportCourseModal(context, folder: folderObj);
+                          } else if (val == 'rename') {
+                            _openRenameFolderModal(context, folderObj);
+                          } else if (val == 'delete') {
+                            _confirmDeleteFolder(context, folderObj);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'open',
+                            child: Row(
+                              children: [
+                                Icon(Icons.folder_open, size: 16, color: Color(0xFFCBD5E1)),
+                                SizedBox(width: 8),
+                                Text('Open Course Folder'),
+                              ],
                             ),
-                            const PopupMenuItem(
-                              value: 'add',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.add, size: 16, color: Color(0xFF64748B)),
-                                  SizedBox(width: 8),
-                                  Text('Add Lecture Video'),
-                                ],
-                              ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'add',
+                            child: Row(
+                              children: [
+                                Icon(Icons.add, size: 16, color: Color(0xFFCBD5E1)),
+                                SizedBox(width: 8),
+                                Text('Add Lecture Video'),
+                              ],
                             ),
-                            const PopupMenuItem(
-                              value: 'rename',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.edit_outlined, size: 16, color: Color(0xFF64748B)),
-                                  SizedBox(width: 8),
-                                  Text('Rename Course Folder'),
-                                ],
-                              ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'rename',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined, size: 16, color: Color(0xFFCBD5E1)),
+                                SizedBox(width: 8),
+                                Text('Rename Course Folder'),
+                              ],
                             ),
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.delete_outline, size: 16, color: AppColors.error),
-                                  SizedBox(width: 8),
-                                  Text('Delete Course Folder', style: TextStyle(color: AppColors.error)),
-                                ],
-                              ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                                SizedBox(width: 8),
+                                Text('Delete Course Folder', style: TextStyle(color: AppColors.error)),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                   ],
-                );
-              },
+                ),
+              ),
             ),
           ),
         );
@@ -606,24 +577,15 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
   }
 
   Widget _buildVideoGrid(List<Lesson> allVideoLessons, Folder activeFolder, bool isMobile, double maxWidth) {
-    int crossAxisCount = 1;
-    if (maxWidth > 1400) {
-      crossAxisCount = 4;
-    } else if (maxWidth > 1000) {
-      crossAxisCount = 3;
-    } else if (maxWidth > 700) {
-      crossAxisCount = 2;
-    }
-
     final lessons = allVideoLessons.where((l) => l.folderId == activeFolder.id || l.topic.toLowerCase() == activeFolder.name.toLowerCase()).toList();
 
     return GridView.builder(
-      padding: EdgeInsets.all(isMobile ? 16 : 32),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 24,
-        mainAxisSpacing: 24,
-        childAspectRatio: 0.85,
+      padding: EdgeInsets.all(isMobile ? 12 : 24),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 240,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        mainAxisExtent: 220,
       ),
       itemCount: lessons.length,
       itemBuilder: (context, index) {
@@ -633,7 +595,8 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
 
         return Card(
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: AppColors.border)),
+          color: const Color(0xFF162238),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF2A3B5C))),
           clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,7 +610,7 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
                       width: double.infinity,
                       child: thumbUrl != null
                           ? Image.network(thumbUrl, fit: BoxFit.cover)
-                          : const Center(child: Icon(Icons.ondemand_video, size: 48, color: Colors.white54)),
+                          : const Center(child: Icon(Icons.ondemand_video, size: 36, color: Colors.white54)),
                     ),
                     Positioned.fill(
                       child: Container(color: Colors.black.withValues(alpha: 0.2)),
@@ -656,7 +619,7 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
                       child: FloatingActionButton.small(
                         onPressed: () => _playLesson(lesson, ytId, thumbUrl),
                         backgroundColor: const Color(0xFFF43F5E),
-                        child: const Icon(Icons.play_arrow, color: Colors.white),
+                        child: const Icon(Icons.play_arrow, color: Colors.white, size: 18),
                       ),
                     ),
                   ],
@@ -664,7 +627,7 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -675,11 +638,11 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
                             child: Align(
                               alignment: Alignment.centerLeft,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(4)),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: const Color(0xFF1E293B), borderRadius: BorderRadius.circular(4)),
                                 child: Text(
                                   lesson.topic.toUpperCase(),
-                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -689,7 +652,7 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
                           PopupMenuButton<String>(
                             icon: const Icon(Icons.more_vert, size: 16, color: Color(0xFF94A3B8)),
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            constraints: const BoxConstraints(minWidth: 36),
                             onSelected: (val) {
                               if (val == 'watch') {
                                 _playLesson(lesson, ytId, thumbUrl);
@@ -746,13 +709,13 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 2),
                       Tooltip(
                         message: lesson.title,
                         child: Text(
                           lesson.title,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary, height: 1.35),
-                          maxLines: 3,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white, height: 1.2),
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -763,23 +726,23 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
                           Row(
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF94A3B8)),
+                                icon: const Icon(Icons.edit_outlined, size: 14, color: Color(0xFF94A3B8)),
                                 tooltip: 'Edit Title',
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                                 onPressed: () => _openEditLessonTitleModal(context, lesson),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 8),
                               IconButton(
-                                icon: const Icon(Icons.drive_file_move_outlined, size: 16, color: Color(0xFF94A3B8)),
+                                icon: const Icon(Icons.drive_file_move_outlined, size: 14, color: Color(0xFF94A3B8)),
                                 tooltip: 'Move to Course',
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                                 onPressed: () => _openMoveLessonModal(context, lesson),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 8),
                               IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFF94A3B8)),
+                                icon: const Icon(Icons.delete_outline, size: 14, color: Color(0xFF94A3B8)),
                                 tooltip: 'Delete Video',
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
@@ -789,13 +752,15 @@ class _LiveLecturesViewState extends State<LiveLecturesView> {
                           ),
                           ElevatedButton.icon(
                             onPressed: () => _playLesson(lesson, ytId, thumbUrl),
-                            icon: const Icon(Icons.play_arrow, size: 12),
-                            label: const Text('Watch & Notes', style: TextStyle(fontSize: 11)),
+                            icon: const Icon(Icons.play_arrow, size: 10),
+                            label: const Text('Watch', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFFF1F2),
                               foregroundColor: const Color(0xFFF43F5E),
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                           ),
                         ],

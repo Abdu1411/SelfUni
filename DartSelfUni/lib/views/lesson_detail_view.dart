@@ -357,16 +357,16 @@ class _LessonDetailViewState extends State<LessonDetailView> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF162238),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: widget.onNavigateBack,
         ),
         title: Text(
           widget.lesson.topic,
           style: const TextStyle(
-            color: AppColors.textSecondary,
+            color: Colors.white,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -464,7 +464,7 @@ class _LessonDetailViewState extends State<LessonDetailView> {
           _isEditing
               ? Center(
                   child: Container(
-                    width: isMobile ? double.infinity : screenWidth * 0.7,
+                    width: isMobile ? double.infinity : screenWidth * 0.8,
                     padding: const EdgeInsets.all(24.0),
                     child: RichNoteEditor(
                       initialContent: widget.lesson.content,
@@ -492,7 +492,7 @@ class _LessonDetailViewState extends State<LessonDetailView> {
                         ),
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: double.infinity),
+                            constraints: BoxConstraints(maxWidth: isMobile ? double.infinity : screenWidth * 0.8),
                             child: Container(
                               padding: EdgeInsets.all(isMobile ? 20.0 : 40.0),
                               decoration: BoxDecoration(

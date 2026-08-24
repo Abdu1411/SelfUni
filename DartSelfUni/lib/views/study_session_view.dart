@@ -177,15 +177,15 @@ class _StudySessionViewState extends State<StudySessionView> {
       return Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: const Color(0xFF162238),
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.close, color: AppColors.textPrimary),
+            icon: const Icon(Icons.close, color: Colors.white),
             onPressed: widget.onComplete ?? () => Navigator.of(context).pop(),
           ),
           title: Text(
             widget.title ?? widget.deck?.title ?? 'Study Session',
-            style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
           ),
           centerTitle: true,
         ),
@@ -206,13 +206,13 @@ class _StudySessionViewState extends State<StudySessionView> {
                 const SizedBox(height: 24),
                 const Text(
                   'All Caught Up!',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'You have reviewed all due cards in "${widget.title ?? widget.deck?.title ?? 'this session'}".',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
                 ),
                 () {
                   final totalSessionCards = widget.customSessionCards ?? widget.deck?.cards ?? [];
@@ -266,7 +266,7 @@ class _StudySessionViewState extends State<StudySessionView> {
                     OutlinedButton(
                       onPressed: widget.onComplete ?? () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF64748B),
+                        foregroundColor: const Color(0xFF94A3B8),
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
@@ -286,15 +286,15 @@ class _StudySessionViewState extends State<StudySessionView> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF162238),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: AppColors.textPrimary),
+          icon: const Icon(Icons.close, color: Colors.white),
           onPressed: widget.onComplete ?? () => Navigator.of(context).pop(),
         ),
         title: Text(
           widget.title ?? widget.deck?.title ?? 'Study Session',
-          style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
         ),
         centerTitle: true,
         actions: [
@@ -306,7 +306,7 @@ class _StudySessionViewState extends State<StudySessionView> {
               child: Text(
                 '${_currentIndex + 1} / ${_dueCards.length}',
                 style: const TextStyle(
-                  color: AppColors.primary,
+                  color: Color(0xFF38BDF8),
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -331,15 +331,15 @@ class _StudySessionViewState extends State<StudySessionView> {
                     Expanded(
                       child: Card(
                         elevation: 6,
-                        shadowColor: (ArchetypeConfig.configs[currentCard.type]?.color ?? Colors.black).withValues(alpha: 0.15),
+                        shadowColor: (ArchetypeConfig.configs[currentCard.type]?.color ?? Colors.black).withValues(alpha: 0.25),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(24),
                           side: BorderSide(
-                            color: ArchetypeConfig.configs[currentCard.type]?.borderColor ?? AppColors.border,
-                            width: 2,
+                            color: ArchetypeConfig.configs[currentCard.type]?.color.withValues(alpha: 0.6) ?? const Color(0xFF2A3B5C),
+                            width: 1.5,
                           ),
                         ),
-                        color: ArchetypeConfig.configs[currentCard.type]?.backgroundColor.withValues(alpha: 0.6) ?? Colors.white,
+                        color: const Color(0xFF162238),
                         child: Padding(
                           padding: EdgeInsets.all(isMobile ? 20.0 : 32.0),
                           child: Column(
@@ -379,21 +379,21 @@ class _StudySessionViewState extends State<StudySessionView> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
+                                        color: const Color(0xFF1E293B),
                                         borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                        border: Border.all(color: const Color(0xFF2A3B5C)),
                                       ),
                                       child: Text(
                                         '${currentCard.consecutiveCorrect}/2 to Master',
-                                        style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                                        style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
                                       ),
                                     ),
                                   const Spacer(),
                                   if (currentCard.sourceUrl != null && currentCard.sourceUrl!.isNotEmpty) ...[
                                     ActionChip(
-                                      avatar: const Icon(Icons.open_in_new, size: 13, color: AppColors.primary),
+                                      avatar: const Icon(Icons.open_in_new, size: 13, color: Color(0xFF38BDF8)),
                                       label: const Text('Resource'),
-                                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
                                       onPressed: () async {
                                         final uri = Uri.parse(currentCard.sourceUrl!);
                                         if (await canLaunchUrl(uri)) await launchUrl(uri);
@@ -402,7 +402,7 @@ class _StudySessionViewState extends State<StudySessionView> {
                                     const SizedBox(width: 8),
                                   ],
                                   if (currentCard.codeSnippet != null)
-                                    const Icon(Icons.code, color: AppColors.textSecondary),
+                                    const Icon(Icons.code, color: Color(0xFF94A3B8)),
                                 ],
                               ),
                               SizedBox(height: isMobile ? 16 : 32),
@@ -420,7 +420,7 @@ class _StudySessionViewState extends State<StudySessionView> {
                                       if (_isFlipped) ...[
                                         const Padding(
                                           padding: EdgeInsets.symmetric(vertical: 24.0),
-                                          child: Divider(color: AppColors.border, thickness: 2),
+                                          child: Divider(color: Color(0xFF2A3B5C), thickness: 1.5),
                                         ),
                                         _buildBackContent(currentCard),
                                       ],
@@ -472,13 +472,13 @@ class _StudySessionViewState extends State<StudySessionView> {
                               child: ElevatedButton(
                                 onPressed: _isEvaluatingCode ? null : _flipCard,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.textPrimary,
+                                  backgroundColor: const Color(0xFF2563EB),
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 ),
                                 child: _isEvaluatingCode 
                                     ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                                    : Text('Show Answer', style: TextStyle(fontSize: isMobile ? 16 : 18, fontWeight: FontWeight.bold)),
+                                    : Text('Show Answer', style: TextStyle(fontSize: isMobile ? 16 : 18, fontWeight: FontWeight.bold, color: Colors.white)),
                               ),
                             ),
                     ),
@@ -529,13 +529,13 @@ class _StudySessionViewState extends State<StudySessionView> {
         ],
         if (!_isFlipped && card.type == CardType.explain) ...[
           const SizedBox(height: 24),
-          const Text('Your Explanation:', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+          const Text('Your Explanation:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: const Color(0xFF1E293B),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: const Color(0xFF2A3B5C)),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: TextField(
@@ -543,9 +543,10 @@ class _StudySessionViewState extends State<StudySessionView> {
               onChanged: (val) {
                 _currentCode = val;
               },
-              style: const TextStyle(fontSize: 14.5, height: 1.5, color: AppColors.textPrimary),
+              style: const TextStyle(fontSize: 14.5, height: 1.5, color: Colors.white),
               decoration: const InputDecoration(
                 hintText: 'Type your explanation here...',
+                hintStyle: TextStyle(color: Color(0xFF94A3B8)),
                 border: InputBorder.none,
                 isDense: true,
               ),

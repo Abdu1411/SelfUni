@@ -62,206 +62,277 @@ class DashboardView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeroHeader(
-            reviewsDue: reviewsDue,
-            totalDecks: decksCount,
-            totalCards: totalCards,
-            totalNotes: lessonsCount,
-            totalFolders: foldersCount,
-            onStartReview: onNavigateToDecks,
-            onCreate: onNavigateToSynthesizer,
-            isMobile: isMobile,
+          // Top Header Bar
+          Row(
+            children: [
+              const Text(
+                'Study Dashboard',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.search, color: Color(0xFF94A3B8)),
+                onPressed: () {},
+              ),
+              IconButton(
+                icon: const Icon(Icons.notifications_none, color: Color(0xFF94A3B8)),
+                onPressed: () {},
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E293B),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.person, color: Color(0xFF38BDF8), size: 20),
+              ),
+            ],
           ),
           
-          const SizedBox(height: 32),
-          
-          _buildSectionHeader(
-            title: 'STUDY ANALYTICS & MASTERY',
-            subtitle: 'Real-time spaced repetition velocity & algorithm retention',
-            icon: Icons.show_chart,
-            actionLabel: 'RESET STATS',
-            onAction: () => deckProvider.resetAllStats(),
+          const SizedBox(height: 24),
+
+          // Mesh Gradient Hero Banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF60A5FA), Color(0xFF818CF8), Color(0xFFA78BFA)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF818CF8).withValues(alpha: 0.35),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Text(
+                  reviewsDue.toString(),
+                  style: const TextStyle(
+                    fontSize: 64,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF0F172A),
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Cards Due for Review',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: startUniversalStudy,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    elevation: 4,
+                  ),
+                  child: const Text(
+                    'Start Session',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF0F172A), shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Container(width: 6, height: 6, decoration: BoxDecoration(color: const Color(0xFF0F172A).withValues(alpha: 0.4), shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Container(width: 6, height: 6, decoration: BoxDecoration(color: const Color(0xFF0F172A).withValues(alpha: 0.4), shape: BoxShape.circle)),
+                  ],
+                ),
+              ],
+            ),
           ),
           
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           
-          // Analytics Stat Cards
+          // 3 Stat KPI Cards
+          Row(
+            children: [
+              Expanded(child: _buildDarkKpiCard('Cards:', totalCards.toString(), 'Total')),
+              const SizedBox(width: 12),
+              Expanded(child: _buildDarkKpiCard('Due Today:', reviewsDue.toString(), '')),
+              const SizedBox(width: 12),
+              Expanded(child: _buildDarkKpiCard('Retention:', '92%', 'Avg')),
+            ],
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Charts Row
           if (isMobile)
             Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(child: _buildAnalyticCard('TOTAL DECKS', decksCount.toString(), 'decks', Icons.layers_outlined)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildAnalyticCard('FLASHCARDS', totalCards.toString(), 'cards', Icons.menu_book)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: _buildAnalyticCard('DUE TODAY', reviewsDue.toString(), 'due queue', Icons.access_time)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildAnalyticCard('AVG RETENTION', '0%', 'mastery', Icons.psychology_outlined)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _buildAnalyticCard('TIME STUDIED', '45', 'min today', Icons.timer_outlined),
+                WeeklyVelocityChart(activityData: stats.activityData),
+                const SizedBox(height: 16),
+                MasteryChart(masteryData: stats.masteryData),
               ],
             )
           else
             Row(
               children: [
-                Expanded(child: _buildAnalyticCard('TOTAL DECKS', decksCount.toString(), 'decks', Icons.layers_outlined)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildAnalyticCard('FLASHCARDS', totalCards.toString(), 'cards', Icons.menu_book)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildAnalyticCard('DUE TODAY', reviewsDue.toString(), 'due queue', Icons.access_time)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildAnalyticCard('AVG RETENTION', '0%', 'mastery', Icons.psychology_outlined)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildAnalyticCard('TIME STUDIED', '45', 'min today', Icons.timer_outlined)),
+                Expanded(child: WeeklyVelocityChart(activityData: stats.activityData)),
+                const SizedBox(width: 20),
+                Expanded(child: MasteryChart(masteryData: stats.masteryData)),
               ],
             ),
-              
-              const SizedBox(height: 16),
-              
-              // Charts
-              if (isMobile)
-                Column(
-                  children: [
-                    _buildChartContainer(
-                      title: 'STUDY VELOCITY',
-                      subtitle: '0 cards / last 7 days',
-                      icon: Icons.timeline,
-                      badgeText: 'Active Pulse',
-                      child: WeeklyVelocityChart(activityData: stats.activityData),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildChartContainer(
-                      title: 'DART ALGORITHM MASTERY',
-                      subtitle: '0% retention score',
-                      icon: Icons.data_usage,
-                      badgeText: 'SRS Retention',
-                      child: MasteryChart(masteryData: stats.masteryData),
-                    ),
-                  ],
-                )
-              else
+          
+          const SizedBox(height: 32),
+          
+          // Archetype Grid Section (Universal Deck)
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF162238),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFF2A3B5C)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
                   children: [
-                    Expanded(
-                      child: _buildChartContainer(
-                        title: 'STUDY VELOCITY',
-                        subtitle: '0 cards / last 7 days',
-                        icon: Icons.timeline,
-                        badgeText: 'Active Pulse',
-                        child: WeeklyVelocityChart(activityData: stats.activityData),
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: _buildChartContainer(
-                        title: 'DART ALGORITHM MASTERY',
-                        subtitle: '0% retention score',
-                        icon: Icons.data_usage,
-                        badgeText: 'SRS Retention',
-                        child: MasteryChart(masteryData: stats.masteryData),
-                      ),
-                    ),
-                  ],
-                ),
-              
-              const SizedBox(height: 32),
-              
-              // Archetype Grid Section (Universal Deck)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border),
-                ),
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Text(
-                          '🎯 Study by Note Archetype',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const Spacer(),
-                        InkWell(
-                          onTap: startUniversalStudy,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Tooltip(
-                            message: 'Study all cards across all decks',
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFDBEAFE)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.school, size: 14, color: AppColors.primary),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    dueUniversalCount > 0
-                                        ? 'Study Universal Deck ($dueUniversalCount Due • $totalCards Cards)'
-                                        : 'Study Universal Deck ($masteredUniversalCount 🎓 Mastered • $totalCards Cards)',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.arrow_forward_ios, size: 10, color: AppColors.primary),
-                                ],
-                              ),
-                            ),
-                          ),
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: 4),
                     const Text(
-                      'Target specific cognitive skills across all cards in your library: time complexity proofs, Cloze blanks, loop invariants, or Dart coding.',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      '🎯 Study by Note Archetype',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                    const SizedBox(height: 24),
-                    _buildArchetypeGrid(context: context, deckProvider: deckProvider, isMobile: isMobile),
+                    const Spacer(),
+                    InkWell(
+                      onTap: startUniversalStudy,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0x3338BDF8),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0x6638BDF8)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.school, size: 14, color: Color(0xFF38BDF8)),
+                            const SizedBox(width: 6),
+                            Text(
+                              dueUniversalCount > 0
+                                  ? 'Study Universal Deck ($dueUniversalCount Due • $totalCards Cards)'
+                                  : 'Study Universal Deck ($masteredUniversalCount 🎓 Mastered • $totalCards Cards)',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_forward_ios, size: 10, color: Color(0xFF38BDF8)),
+                          ],
+                        ),
+                      ),
+                    )
                   ],
                 ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Target specific cognitive skills across all cards: time complexity proofs, Cloze blanks, or algorithm tracing.',
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                ),
+                const SizedBox(height: 24),
+                _buildArchetypeGrid(context: context, deckProvider: deckProvider, isMobile: isMobile),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 32),
+          
+          // Recent Activity Section
+          if (isMobile)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildRecentDecksSection(deckProvider),
+                const SizedBox(height: 32),
+                _buildRecentNotesSection(context, deckProvider),
+              ],
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildRecentDecksSection(deckProvider)),
+                const SizedBox(width: 24),
+                Expanded(child: _buildRecentNotesSection(context, deckProvider)),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDarkKpiCard(String label, String value, String suffix) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+      decoration: BoxDecoration(
+        color: const Color(0xFF162238),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF2A3B5C)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white, height: 1.0),
               ),
-              
-              const SizedBox(height: 32),
-              
-              // Recent Activity Section
-              if (isMobile)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildRecentDecksSection(deckProvider),
-                    const SizedBox(height: 32),
-                    _buildRecentNotesSection(context, deckProvider),
-                  ],
-                )
-              else
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _buildRecentDecksSection(deckProvider)),
-                    const SizedBox(width: 32),
-                    Expanded(child: _buildRecentNotesSection(context, deckProvider)),
-                  ],
+              if (suffix.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                Text(
+                  suffix,
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
                 ),
+              ],
             ],
           ),
-        );
+        ],
+      ),
+    );
   }
 
   Widget _buildHeroHeader({
@@ -746,18 +817,18 @@ class DashboardView extends StatelessWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.layers, size: 18, color: Color(0xFF3B82F6)),
+                Icon(Icons.layers, size: 18, color: Color(0xFF38BDF8)),
                 SizedBox(width: 8),
-                Text('RECENT FLASHCARD DECKS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E293B), letterSpacing: 0.5)),
+                Text('RECENT FLASHCARD DECKS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
               ],
             ),
             TextButton(
               onPressed: onNavigateToDecks,
               child: const Row(
                 children: [
-                  Text('View All (3)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF3B82F6))),
+                  Text('View All (3)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
                   SizedBox(width: 4),
-                  Icon(Icons.arrow_forward, size: 14, color: Color(0xFF3B82F6)),
+                  Icon(Icons.arrow_forward, size: 14, color: Color(0xFF38BDF8)),
                 ],
               ),
             ),
@@ -771,9 +842,9 @@ class DashboardView extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF162238),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: const Color(0xFF2A3B5C)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -784,28 +855,28 @@ class DashboardView extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
+                        color: const Color(0xFF1E293B),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(color: const Color(0xFF334155)),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.folder, size: 10, color: Colors.amber),
                           SizedBox(width: 4),
-                          Text('Mathematics for Computer Science', style: TextStyle(fontSize: 9, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                          Text('Mathematics for Computer Science', style: TextStyle(fontSize: 9, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
                     Row(
                       children: [
-                        Text('$dueCount due', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                        Text('$dueCount due', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(deck.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                Text(deck.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -817,14 +888,14 @@ class DashboardView extends StatelessWidget {
                         icon: const Icon(Icons.play_arrow, size: 14),
                         label: const Text('Study Due', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFEFF6FF),
-                          foregroundColor: const Color(0xFF2563EB),
+                          backgroundColor: const Color(0x3338BDF8),
+                          foregroundColor: const Color(0xFF38BDF8),
                           elevation: 0,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ),
-                    const Icon(Icons.tune, size: 16, color: Color(0xFFCBD5E1)),
+                    const Icon(Icons.tune, size: 16, color: Color(0xFF64748B)),
                   ],
                 )
               ],
@@ -847,7 +918,7 @@ class DashboardView extends StatelessWidget {
               children: [
                 Icon(Icons.menu_book, size: 18, color: Color(0xFF10B981)),
                 SizedBox(width: 8),
-                Text('RECENT CS NOTES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E293B), letterSpacing: 0.5)),
+                Text('RECENT CS NOTES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
               ],
             ),
             Row(
@@ -857,8 +928,8 @@ class DashboardView extends StatelessWidget {
                   icon: const Icon(Icons.psychology, size: 14),
                   label: const Text('Due Notes Review', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFEF2F2),
-                    foregroundColor: const Color(0xFFE11D48),
+                    backgroundColor: const Color(0x33F43F5E),
+                    foregroundColor: const Color(0xFFF43F5E),
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -886,9 +957,9 @@ class DashboardView extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF162238),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: const Color(0xFF2A3B5C)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -900,13 +971,13 @@ class DashboardView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFECFDF5),
+                          color: const Color(0x3310B981),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFD1FAE5)),
+                          border: Border.all(color: const Color(0x6610B981)),
                         ),
                         child: Text(
                           lesson.title.replaceAll(' ', '-').toLowerCase(),
-                          style: const TextStyle(fontSize: 9, color: Color(0xFF059669), fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontSize: 9, color: Color(0xFF10B981), fontWeight: FontWeight.bold),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -919,14 +990,14 @@ class DashboardView extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   lesson.title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
                 Text(
                   lesson.content.length > 80 ? '${lesson.content.substring(0, 80)}...' : lesson.content,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), height: 1.4),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),

@@ -14,8 +14,8 @@ class TopBar extends StatelessWidget {
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+        color: Color(0xFF162238),
+        border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -28,7 +28,7 @@ class TopBar extends StatelessWidget {
           // API Key Settings
           IconButton(
             onPressed: onOpenSettings,
-            icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary),
+            icon: const Icon(Icons.settings_outlined, color: Color(0xFF94A3B8)),
             tooltip: 'Settings (API Key)',
           ),
           

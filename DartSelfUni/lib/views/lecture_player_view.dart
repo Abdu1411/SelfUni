@@ -381,14 +381,14 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
             height: 60,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: AppColors.border)),
+              color: Color(0xFF162238),
+              border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
             ),
             child: Row(
               children: [
                 IconButton(
                   onPressed: widget.onBack,
-                  icon: const Icon(Icons.arrow_back),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
                   tooltip: 'Back to Lectures',
                 ),
                 const SizedBox(width: 8),
@@ -413,7 +413,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                           Flexible(
                             child: Text(
                               lecture.title,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -421,7 +421,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                       ),
                       Text(
                         'Instructor: ${lecture.instructor} • ${lecture.category}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                       ),
                     ],
                   ),
@@ -429,9 +429,9 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                 if (lecture.status == LectureStatus.live) ...[
                   Row(
                     children: [
-                      const Icon(Icons.people_outline, size: 16, color: AppColors.textSecondary),
+                      const Icon(Icons.people_outline, size: 16, color: Color(0xFF94A3B8)),
                       const SizedBox(width: 4),
-                      Text('${lecture.attendeesCount} watching', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                      Text('${lecture.attendeesCount} watching', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
                     ],
                   ),
                   const SizedBox(width: 16),
@@ -441,9 +441,9 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: AppColors.background,
+                      color: const Color(0xFF1E293B),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(color: const Color(0xFF2A3B5C)),
                     ),
                     child: Row(
                       children: [
@@ -459,9 +459,9 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.video_call, size: 14, color: _videoFlex == 4 ? Colors.white : AppColors.textSecondary),
+                                  Icon(Icons.video_call, size: 14, color: _videoFlex == 4 ? Colors.white : const Color(0xFF94A3B8)),
                                   const SizedBox(width: 4),
-                                  Text('Theater', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _videoFlex == 4 ? Colors.white : AppColors.textSecondary)),
+                                  Text('Theater', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _videoFlex == 4 ? Colors.white : const Color(0xFF94A3B8))),
                                 ],
                               ),
                             ),
@@ -480,9 +480,9 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.vertical_split, size: 14, color: _videoFlex == 3 ? Colors.white : AppColors.textSecondary),
+                                  Icon(Icons.vertical_split, size: 14, color: _videoFlex == 3 ? Colors.white : const Color(0xFF94A3B8)),
                                   const SizedBox(width: 4),
-                                  Text('50/50', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _videoFlex == 3 ? Colors.white : AppColors.textSecondary)),
+                                  Text('50/50', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _videoFlex == 3 ? Colors.white : const Color(0xFF94A3B8))),
                                 ],
                               ),
                             ),
@@ -501,9 +501,9 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.edit_note, size: 14, color: _videoFlex == 2 ? Colors.white : AppColors.textSecondary),
+                                  Icon(Icons.edit_note, size: 14, color: _videoFlex == 2 ? Colors.white : const Color(0xFF94A3B8)),
                                   const SizedBox(width: 4),
-                                  Text('Notes', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _videoFlex == 2 ? Colors.white : AppColors.textSecondary)),
+                                  Text('Notes', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _videoFlex == 2 ? Colors.white : const Color(0xFF94A3B8))),
                                 ],
                               ),
                             ),
@@ -543,12 +543,12 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                               Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: const Color(0xFF162238),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  border: Border.all(color: const Color(0xFF2A3B5C)),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.02),
+                                      color: Colors.black.withValues(alpha: 0.15),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -566,13 +566,13 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                           Container(
                                             padding: const EdgeInsets.all(10),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFFFFBEB),
+                                              color: const Color(0x22F59E0B),
                                               borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(color: const Color(0xFFFDE68A)),
+                                              border: Border.all(color: const Color(0x66F59E0B)),
                                             ),
                                             child: const Icon(
                                               Icons.draw_outlined,
-                                              color: Color(0xFFB45309),
+                                              color: Color(0xFFF59E0B),
                                               size: 20,
                                             ),
                                           ),
@@ -586,7 +586,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                                   style: TextStyle(
                                                     fontSize: 13,
                                                     fontWeight: FontWeight.w900,
-                                                    color: Color(0xFF0F172A),
+                                                    color: Colors.white,
                                                     letterSpacing: 0.3,
                                                   ),
                                                 ),
@@ -596,7 +596,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                                   style: TextStyle(
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.w500,
-                                                    color: Color(0xFF64748B),
+                                                    color: Color(0xFF94A3B8),
                                                   ),
                                                 ),
                                               ],
@@ -605,18 +605,18 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                           const SizedBox(width: 16),
                                           OutlinedButton.icon(
                                             onPressed: _openManualCardForge,
-                                            icon: const Icon(Icons.draw_outlined, size: 16, color: Color(0xFFB45309)),
+                                            icon: const Icon(Icons.draw_outlined, size: 16, color: Color(0xFFF59E0B)),
                                             label: const Text(
                                               'Open Forge',
                                               style: TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w800,
-                                                color: Color(0xFFB45309),
+                                                color: Color(0xFFF59E0B),
                                               ),
                                             ),
                                             style: OutlinedButton.styleFrom(
-                                              backgroundColor: const Color(0xFFFFFBEB),
-                                              side: const BorderSide(color: Color(0xFFFDE68A)),
+                                              backgroundColor: const Color(0x22F59E0B),
+                                              side: const BorderSide(color: Color(0x66F59E0B)),
                                               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(30),
@@ -633,21 +633,21 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                           ),
                         ),
                       ),
-                      const Divider(height: 1, color: AppColors.border),
+                      const Divider(height: 1, color: Color(0xFF1E293B)),
                       // Notes Editor
                       Expanded(
                         flex: 4,
                         child: Container(
                           decoration: const BoxDecoration(
-                            color: Colors.white,
+                            color: Color(0xFF0B132B),
                           ),
                           child: Column(
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 decoration: const BoxDecoration(
-                                  color: Color(0xFFF8FAFC),
-                                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                                  color: Color(0xFF162238),
+                                  border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
                                 ),
                                 child: const Row(
                                   children: [
@@ -658,7 +658,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w800,
-                                        color: Color(0xFF0F172A),
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ],
@@ -710,17 +710,16 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                 thumbnailUrl: lecture.thumbnailUrl,
                                 onPlayToggled: () => setState(() => _isPlaying = !_isPlaying),
                               ),
-                              const SizedBox(height: 24),
                               // Redesigned Manual Card Forge Banner
                               Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: const Color(0xFF162238),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  border: Border.all(color: const Color(0xFF2A3B5C)),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.02),
+                                      color: Colors.black.withValues(alpha: 0.15),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -738,13 +737,13 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                           Container(
                                             padding: const EdgeInsets.all(10),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFFFFBEB),
+                                              color: const Color(0x22F59E0B),
                                               borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(color: const Color(0xFFFDE68A)),
+                                              border: Border.all(color: const Color(0x66F59E0B)),
                                             ),
                                             child: const Icon(
                                               Icons.draw_outlined,
-                                              color: Color(0xFFB45309),
+                                              color: Color(0xFFF59E0B),
                                               size: 20,
                                             ),
                                           ),
@@ -758,7 +757,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                                   style: TextStyle(
                                                     fontSize: 13,
                                                     fontWeight: FontWeight.w900,
-                                                    color: Color(0xFF0F172A),
+                                                    color: Colors.white,
                                                     letterSpacing: 0.3,
                                                   ),
                                                 ),
@@ -768,7 +767,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                                   style: TextStyle(
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.w500,
-                                                    color: Color(0xFF64748B),
+                                                    color: Color(0xFF94A3B8),
                                                   ),
                                                 ),
                                               ],
@@ -777,18 +776,18 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                           const SizedBox(width: 16),
                                           OutlinedButton.icon(
                                             onPressed: _openManualCardForge,
-                                            icon: const Icon(Icons.draw_outlined, size: 16, color: Color(0xFFB45309)),
+                                            icon: const Icon(Icons.draw_outlined, size: 16, color: Color(0xFFF59E0B)),
                                             label: const Text(
                                               'Open Forge',
                                               style: TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w800,
-                                                color: Color(0xFFB45309),
+                                                color: Color(0xFFF59E0B),
                                               ),
                                             ),
                                             style: OutlinedButton.styleFrom(
-                                              backgroundColor: const Color(0xFFFFFBEB),
-                                              side: const BorderSide(color: Color(0xFFFDE68A)),
+                                              backgroundColor: const Color(0x22F59E0B),
+                                              side: const BorderSide(color: Color(0x66F59E0B)),
                                               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(30),
@@ -811,8 +810,8 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                         flex: _notesFlex,
                         child: Container(
                           decoration: const BoxDecoration(
-                            color: Colors.white,
-                            border: Border(left: BorderSide(color: AppColors.border)),
+                            color: Color(0xFF0B132B),
+                            border: Border(left: BorderSide(color: Color(0xFF1E293B))),
                           ),
                           child: Column(
                             children: [
@@ -820,8 +819,8 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 decoration: const BoxDecoration(
-                                  color: Color(0xFFF8FAFC),
-                                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                                  color: Color(0xFF162238),
+                                  border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
                                 ),
                                 child: const Row(
                                   children: [
@@ -832,7 +831,7 @@ class _LecturePlayerViewState extends State<LecturePlayerView> {
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w800,
-                                        color: Color(0xFF0F172A),
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ],

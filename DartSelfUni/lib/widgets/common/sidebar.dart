@@ -21,7 +21,7 @@ enum WorkspaceTab {
   community
 }
 
-class Sidebar extends StatelessWidget {
+class Sidebar extends StatefulWidget {
   final WorkspaceTab currentTab;
   final String? activeFolderId;
   final ValueChanged<WorkspaceTab> onSelectTab;
@@ -40,6 +40,21 @@ class Sidebar extends StatelessWidget {
     required this.onOpenNewFolder,
     required this.onOpenAskAi,
   });
+
+  @override
+  State<Sidebar> createState() => _SidebarState();
+}
+
+class _SidebarState extends State<Sidebar> {
+  final ScrollController _coursesScrollController = ScrollController();
+  final ScrollController _foldersScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _coursesScrollController.dispose();
+    _foldersScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,8 +92,8 @@ class Sidebar extends StatelessWidget {
     return Container(
       width: 280,
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(right: BorderSide(color: AppColors.border)),
+        color: Color(0xFF0B132B),
+        border: Border(right: BorderSide(color: Color(0xFF1E293B))),
       ),
       child: Column(
         children: [
@@ -92,11 +107,18 @@ class Sidebar extends StatelessWidget {
                   height: 48,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF3B5998), Color(0xFF1E88E5)],
+                      colors: [Color(0xFF38BDF8), Color(0xFF818CF8)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF38BDF8).withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: const Icon(Icons.psychology, color: Colors.white, size: 28),
                 ),
@@ -112,7 +134,7 @@ class Sidebar extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF0F172A),
+                              color: Colors.white,
                               letterSpacing: -0.5,
                             ),
                           ),
@@ -122,7 +144,7 @@ class Sidebar extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF00B4D8), // Light cyan/blue
+                              color: Color(0xFF38BDF8),
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -135,7 +157,7 @@ class Sidebar extends StatelessWidget {
             ),
           ),
           
-          const Divider(height: 1, color: AppColors.border),
+          const Divider(height: 1, color: Color(0xFF1E293B)),
           
           Expanded(
             child: ListView(
@@ -166,7 +188,6 @@ class Sidebar extends StatelessWidget {
                   badge: activeLiveLectures.length.toString(),
                 ),
                 
-                // Adjusted based on prompt to combine into AI Generate
                 _buildNavItem(
                   icon: Icons.auto_awesome,
                   label: 'AI Generate',
@@ -193,7 +214,7 @@ class Sidebar extends StatelessWidget {
                         const Icon(
                           Icons.tune_rounded,
                           size: 22,
-                          color: Color(0xFF9C27B0), // Purple accent
+                          color: Color(0xFFA855F7), // Purple accent
                         ),
                         const SizedBox(width: 16),
                         const Expanded(
@@ -202,7 +223,7 @@ class Sidebar extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF4A5568),
+                              color: Color(0xFFCBD5E1),
                             ),
                           ),
                         ),
@@ -211,23 +232,23 @@ class Sidebar extends StatelessWidget {
                             margin: const EdgeInsets.only(right: 6),
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFEF3C7),
+                              color: const Color(0x33F59E0B),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFFDE68A)),
+                              border: Border.all(color: const Color(0x66F59E0B)),
                             ),
                             child: Text(
                               '$totalDue due',
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF92400E),
+                                color: Color(0xFFFBBF24),
                               ),
                             ),
                           ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
+                            color: const Color(0xFF1E293B),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -235,7 +256,7 @@ class Sidebar extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF64748B),
+                              color: Color(0xFF94A3B8),
                             ),
                           ),
                         ),
@@ -248,80 +269,93 @@ class Sidebar extends StatelessWidget {
                 
                 _buildSectionLabel('LOCAL COURSES (${deckProvider.courses.length})', pomodoroTime, pomodoro.isActive, padding: EdgeInsets.zero),
                 const SizedBox(height: 8),
-                ...deckProvider.courses.map((course) => _buildCourseItem(course, context)),
-                
-                // Fallback courses if empty to match initial state
-                if (deckProvider.courses.isEmpty) ...[
-                  _buildCourseItem(
-                    Course(
-                      id: 'crs_linear_algebra',
-                      title: 'Linear Algebra',
-                      description: 'Gilbert Strang MIT 18.06 Linear Algebra course.',
-                      instructors: ['Prof. Gilbert Strang'],
-                      modules: [
-                        CourseModule(
-                          id: 'mod_1',
-                          title: 'Lectures',
-                          items: [
-                            CourseItem(
-                              id: 'item_1',
-                              title: 'Lecture 1: The Geometry of Linear Equations',
-                              type: 'video',
-                              path: 'https://www.youtube.com/watch?v=7UJ4CFRGd-U',
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 180),
+                  child: Scrollbar(
+                    controller: _coursesScrollController,
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _coursesScrollController,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ...deckProvider.courses.map((course) => _buildCourseItem(course, context)),
+                          if (deckProvider.courses.isEmpty) ...[
+                            _buildCourseItem(
+                              Course(
+                                id: 'crs_linear_algebra',
+                                title: 'Linear Algebra',
+                                description: 'Gilbert Strang MIT 18.06 Linear Algebra course.',
+                                instructors: ['Prof. Gilbert Strang'],
+                                modules: [
+                                  CourseModule(
+                                    id: 'mod_1',
+                                    title: 'Lectures',
+                                    items: [
+                                      CourseItem(
+                                        id: 'item_1',
+                                        title: 'Lecture 1: The Geometry of Linear Equations',
+                                        type: 'video',
+                                        path: 'https://www.youtube.com/watch?v=7UJ4CFRGd-U',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              context,
+                            ),
+                            _buildCourseItem(
+                              Course(
+                                id: 'crs_math_cs',
+                                title: 'Mathematics for Computer Science',
+                                description: 'MIT 6.042J Discrete Mathematics and Computer Science Foundations.',
+                                instructors: ['Prof. Albert Meyer'],
+                                modules: [
+                                  CourseModule(
+                                    id: 'mod_1',
+                                    title: 'Foundations',
+                                    items: [
+                                      CourseItem(
+                                        id: 'item_1',
+                                        title: 'Lecture 1: Proofs and Logic',
+                                        type: 'video',
+                                        path: 'https://www.youtube.com/watch?v=L3LMbpZIKhQ',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              context,
+                            ),
+                            _buildCourseItem(
+                              Course(
+                                id: 'crs_algorithms',
+                                title: 'Design and Analysis of Algorithms',
+                                description: 'MIT 6.046J Advanced Algorithms.',
+                                instructors: ['Prof. Erik Demaine'],
+                                modules: [
+                                  CourseModule(
+                                    id: 'mod_1',
+                                    title: 'Algorithms',
+                                    items: [
+                                      CourseItem(
+                                        id: 'item_1',
+                                        title: 'Lecture 1: Dynamic Programming & Intervals',
+                                        type: 'video',
+                                        path: 'https://www.youtube.com/watch?v=r4-c9fl7vG4',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              context,
                             ),
                           ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    context,
                   ),
-                  _buildCourseItem(
-                    Course(
-                      id: 'crs_math_cs',
-                      title: 'Mathematics for Computer Science',
-                      description: 'MIT 6.042J Discrete Mathematics and Computer Science Foundations.',
-                      instructors: ['Prof. Albert Meyer'],
-                      modules: [
-                        CourseModule(
-                          id: 'mod_1',
-                          title: 'Foundations',
-                          items: [
-                            CourseItem(
-                              id: 'item_1',
-                              title: 'Lecture 1: Proofs and Logic',
-                              type: 'video',
-                              path: 'https://www.youtube.com/watch?v=L3LMbpZIKhQ',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    context,
-                  ),
-                  _buildCourseItem(
-                    Course(
-                      id: 'crs_algorithms',
-                      title: 'Design and Analysis of Algorithms',
-                      description: 'MIT 6.046J Advanced Algorithms.',
-                      instructors: ['Prof. Erik Demaine'],
-                      modules: [
-                        CourseModule(
-                          id: 'mod_1',
-                          title: 'Algorithms',
-                          items: [
-                            CourseItem(
-                              id: 'item_1',
-                              title: 'Lecture 1: Dynamic Programming & Intervals',
-                              type: 'video',
-                              path: 'https://www.youtube.com/watch?v=r4-c9fl7vG4',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    context,
-                  ),
-                ],
+                ),
                 
                 const SizedBox(height: 24),
                 
@@ -331,28 +365,41 @@ class Sidebar extends StatelessWidget {
                     _buildSectionLabel('FOLDERS (${deckProvider.folders.length})', pomodoroTime, pomodoro.isActive, padding: EdgeInsets.zero),
                     IconButton(
                       icon: const Icon(Icons.add, size: 18, color: Color(0xFF94A3B8)),
-                      onPressed: onOpenNewFolder,
+                      onPressed: widget.onOpenNewFolder,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                ...deckProvider.folders.map((folder) {
-                  final itemsInFolder = deckProvider.decks.where((d) => d.folderId == folder.id).length + 
-                                        deckProvider.lessons.where((l) => l.folderId == folder.id).length;
-                  return _buildFolderItem(folder.name, folder.color, itemsInFolder, folder.id, context);
-                }),
-                
-                // Fallback folders if empty to match screenshot
-                if (deckProvider.folders.isEmpty) ...[
-                  _buildFolderItem('Introduction to Algorithms design ...', '#3B82F6', 0, null, context),
-                  _buildFolderItem('Recursion', '#EF4444', 1, null, context),
-                  _buildFolderItem('Linear Algebra MIT', '#3B82F6', 0, null, context),
-                  _buildFolderItem('Multivariable Calculus MIT', '#3B82F6', 0, null, context),
-                  _buildFolderItem('Algorithms', '#3B82F6', 0, null, context),
-                  _buildFolderItem('Single Variable calculus MIT', '#3B82F6', 0, null, context),
-                ],
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 180),
+                  child: Scrollbar(
+                    controller: _foldersScrollController,
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _foldersScrollController,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ...deckProvider.folders.map((folder) {
+                            final itemsInFolder = deckProvider.decks.where((d) => d.folderId == folder.id).length + 
+                                                  deckProvider.lessons.where((l) => l.folderId == folder.id).length;
+                            return _buildFolderItem(folder.name, folder.color, itemsInFolder, folder.id, context);
+                          }),
+                          if (deckProvider.folders.isEmpty) ...[
+                            _buildFolderItem('Introduction to Algorithms design ...', '#3B82F6', 0, null, context),
+                            _buildFolderItem('Recursion', '#EF4444', 1, null, context),
+                            _buildFolderItem('Linear Algebra MIT', '#3B82F6', 0, null, context),
+                            _buildFolderItem('Multivariable Calculus MIT', '#3B82F6', 0, null, context),
+                            _buildFolderItem('Algorithms', '#3B82F6', 0, null, context),
+                            _buildFolderItem('Single Variable calculus MIT', '#3B82F6', 0, null, context),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -363,9 +410,9 @@ class Sidebar extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: const Color(0xFF162238),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: const Color(0xFF2A3B5C)),
               ),
               child: Column(
                 children: [
@@ -380,7 +427,7 @@ class Sidebar extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2563EB),
+                              color: Color(0xFF38BDF8),
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -388,7 +435,7 @@ class Sidebar extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                             decoration: BoxDecoration(
-                              color: pomodoro.isActive ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+                              color: pomodoro.isActive ? const Color(0x3338BDF8) : const Color(0xFF1E293B),
                               borderRadius: BorderRadius.circular(5),
                             ),
                             child: Row(
@@ -397,7 +444,7 @@ class Sidebar extends StatelessWidget {
                                 Icon(
                                   Icons.timer_outlined,
                                   size: 9,
-                                  color: pomodoro.isActive ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                  color: pomodoro.isActive ? const Color(0xFF38BDF8) : const Color(0xFF94A3B8),
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
@@ -405,7 +452,7 @@ class Sidebar extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.bold,
-                                    color: pomodoro.isActive ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                    color: pomodoro.isActive ? const Color(0xFF38BDF8) : const Color(0xFF94A3B8),
                                   ),
                                 ),
                               ],
@@ -416,16 +463,16 @@ class Sidebar extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: const Color(0xFF1E293B),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                          border: Border.all(color: const Color(0x6638BDF8)),
                         ),
                         child: Text(
                           '$totalDue due',
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2563EB),
+                            color: Color(0xFF38BDF8),
                           ),
                         ),
                       ),
@@ -449,9 +496,9 @@ class Sidebar extends StatelessWidget {
                             }
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3B5998),
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: const Color(0xFF3B5998).withValues(alpha: 0.5),
+                        backgroundColor: const Color(0xFF38BDF8),
+                        foregroundColor: const Color(0xFF0F172A),
+                        disabledBackgroundColor: const Color(0xFF38BDF8).withValues(alpha: 0.3),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -481,15 +528,15 @@ class Sidebar extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: () => _showNoteStyleModal(context),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                  side: const BorderSide(color: Color(0xFF2A3B5C), width: 1.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  backgroundColor: const Color(0xFFF8FAFC),
-                  foregroundColor: const Color(0xFF475569),
+                  backgroundColor: const Color(0xFF162238),
+                  foregroundColor: const Color(0xFFCBD5E1),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.palette_outlined, size: 18, color: Color(0xFF2563EB)),
+                icon: const Icon(Icons.palette_outlined, size: 18, color: Color(0xFF38BDF8)),
                 label: const Text(
                   'STYLE MY NOTES',
                   style: TextStyle(
@@ -524,7 +571,7 @@ class Sidebar extends StatelessWidget {
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF94A3B8),
+              color: Color(0xFF64748B),
               letterSpacing: 1.0,
             ),
           ),
@@ -539,18 +586,18 @@ class Sidebar extends StatelessWidget {
     required WorkspaceTab tab,
     String? badge,
   }) {
-    final isActive = currentTab == tab;
+    final isActive = widget.currentTab == tab;
     return InkWell(
-      onTap: () => onSelectTab(tab),
+      onTap: () => widget.onSelectTab(tab),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         margin: const EdgeInsets.only(bottom: 4),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFEFF6FF) : Colors.transparent,
+          color: isActive ? const Color(0xFF1E293B) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isActive ? const Color(0xFFDBEAFE) : Colors.transparent,
+            color: isActive ? const Color(0x4438BDF8) : Colors.transparent,
           ),
         ),
         child: Row(
@@ -558,7 +605,7 @@ class Sidebar extends StatelessWidget {
             Icon(
               icon,
               size: 22,
-              color: isActive ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+              color: isActive ? const Color(0xFF38BDF8) : const Color(0xFF94A3B8),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -567,7 +614,7 @@ class Sidebar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                  color: isActive ? const Color(0xFF1E3A8A) : const Color(0xFF4A5568),
+                  color: isActive ? Colors.white : const Color(0xFFCBD5E1),
                 ),
               ),
             ),
@@ -575,10 +622,10 @@ class Sidebar extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isActive ? Colors.white : const Color(0xFFF1F5F9),
+                  color: isActive ? const Color(0x3338BDF8) : const Color(0xFF1E293B),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: isActive ? const Color(0xFFBFDBFE) : Colors.transparent,
+                    color: isActive ? const Color(0x6638BDF8) : Colors.transparent,
                   ),
                 ),
                 child: Text(
@@ -586,7 +633,7 @@ class Sidebar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: isActive ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                    color: isActive ? const Color(0xFF38BDF8) : const Color(0xFF94A3B8),
                   ),
                 ),
               ),
@@ -598,7 +645,7 @@ class Sidebar extends StatelessWidget {
   
   Widget _buildCourseItem(Course course, BuildContext context) {
     return InkWell(
-      onTap: () => onSelectCourse(course),
+      onTap: () => widget.onSelectCourse(course),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -690,7 +737,7 @@ class Sidebar extends StatelessWidget {
   }
 
   Widget _buildFolderItem(String name, String? colorHex, int count, String? id, BuildContext context) {
-    final isActive = activeFolderId == id && id != null;
+    final isActive = widget.activeFolderId == id && id != null;
     Color dotColor;
     try {
       dotColor = Color(int.parse((colorHex ?? '#3B82F6').replaceAll('#', 'FF'), radix: 16));
@@ -699,7 +746,7 @@ class Sidebar extends StatelessWidget {
     }
     
     return InkWell(
-      onTap: () => onSelectFolder(id),
+      onTap: () => widget.onSelectFolder(id),
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
