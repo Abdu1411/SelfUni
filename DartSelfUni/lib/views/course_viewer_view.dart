@@ -773,9 +773,9 @@ class _CourseViewerViewState extends State<CourseViewerView> {
                                 width: double.infinity,
                                 height: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: const Color(0xFF0B132B),
                                   borderRadius: _activeItem!.type == 'pdf' ? BorderRadius.zero : BorderRadius.circular(16),
-                                  border: _activeItem!.type == 'pdf' ? null : Border.all(color: AppColors.border),
+                                  border: _activeItem!.type == 'pdf' ? null : Border.all(color: const Color(0xFF1E293B)),
                                 ),
                                 child: ClipRRect(
                                   borderRadius: _activeItem!.type == 'pdf' ? BorderRadius.zero : BorderRadius.circular(16),
@@ -798,28 +798,29 @@ class _CourseViewerViewState extends State<CourseViewerView> {
     if (item.type == 'video') {
       final url = _cleanUrl(item.path ?? item.fileKey ?? '');
       if (url.contains('youtube.com') || url.contains('youtu.be')) {
-        return SingleChildScrollView(
+        return Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Fixed Video Player
               AdaptiveVideoPlayerWidget(
                 key: ValueKey('player_${item.id}_${item.path}'),
                 videoUrl: url,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Text(
                 item.title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               if (item.description != null && item.description!.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   item.description!,
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   OutlinedButton.icon(
@@ -831,15 +832,15 @@ class _CourseViewerViewState extends State<CourseViewerView> {
                     icon: Icon(
                       _showTranscript ? Icons.subtitles_off_outlined : Icons.subtitles_outlined,
                       size: 16,
-                      color: AppColors.primary,
+                      color: const Color(0xFF38BDF8),
                     ),
                     label: Text(
                       _showTranscript ? 'Hide Transcript' : 'Show Transcript',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
+                      foregroundColor: const Color(0xFF38BDF8),
+                      side: const BorderSide(color: Color(0xFF38BDF8)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
@@ -942,64 +943,74 @@ class _CourseViewerViewState extends State<CourseViewerView> {
                 ],
               ),
               if (_showTranscript) ...[
+                const SizedBox(height: 12),
                 if (_activeItem?.transcript != null && _activeItem!.transcript!.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(top: 16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.subtitles_outlined, size: 18, color: AppColors.primary),
-                                SizedBox(width: 8),
-                                Text('Formatted Video Transcript', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              ],
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF162238),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF2A3B5C)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.subtitles_outlined, size: 18, color: Color(0xFF38BDF8)),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Formatted Video Transcript',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 18, color: Color(0xFF94A3B8)),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () {
+                                  setState(() {
+                                    _showTranscript = false;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          const Divider(height: 1, color: Color(0xFF1E293B)),
+                          const SizedBox(height: 10),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: MarkdownView(
+                                data: _activeItem!.transcript!,
+                              ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.close, size: 18, color: AppColors.textSecondary),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () {
-                                setState(() {
-                                  _showTranscript = false;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        MarkdownView(
-                          data: _activeItem!.transcript!,
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   )
                 else
                   Container(
-                    margin: const EdgeInsets.only(top: 16),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBEB),
+                      color: const Color(0x22F59E0B),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFDE68A)),
+                      border: Border.all(color: const Color(0x66F59E0B)),
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.info_outline, color: Color(0xFFB45309)),
+                        Icon(Icons.info_outline, color: Color(0xFFF59E0B)),
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'No transcript generated yet. Click "Generate Transcript" above to generate it.',
-                            style: TextStyle(fontSize: 13, color: Color(0xFFB45309), fontWeight: FontWeight.w500),
+                            style: TextStyle(fontSize: 13, color: Color(0xFFF59E0B), fontWeight: FontWeight.w500),
                           ),
                         ),
                       ],
