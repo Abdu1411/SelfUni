@@ -109,7 +109,6 @@ class _AskAiModalState extends State<AskAiModal> {
   Widget build(BuildContext context) {
     final activeResource = context.watch<ActiveViewProvider>().activeResource;
     final deckProvider = context.watch<DeckProvider>();
-    final theme = deckProvider.noteTheme;
     final custom = deckProvider.customThemeStyles;
 
     final bg = _parseHexColor(custom['bg'] ?? '#ffffff', const Color(0xFFFFFFFF));

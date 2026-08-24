@@ -1,3 +1,6 @@
+import 'course_model.dart';
+import 'folder_model.dart';
+
 class MediaItem {
   final String id;
   final String type; // 'image' | 'audio' | 'pdf' | 'video' | 'other'
@@ -109,5 +112,46 @@ class Lesson {
       'imageUrl': imageUrl,
       'isNote': isNote,
     };
+  }
+
+  /// Checks if this note/lesson belongs to a local course.
+  bool isFromLocalCourse(Iterable<Course> courses, [Iterable<Folder>? folders]) {
+    final t = topic.toLowerCase().trim();
+    final fId = folderId?.toLowerCase().trim();
+    final lId = id.toLowerCase().trim();
+
+    for (final course in courses) {
+      final cTitle = course.title.toLowerCase().trim();
+      final cId = course.id.toLowerCase().trim();
+
+      if (t.isNotEmpty && (t == cTitle || t == cId)) return true;
+      if (fId != null && (fId == cId || fId == cTitle)) return true;
+      if (lId == cId) return true;
+
+      for (final module in course.modules) {
+        for (final item in module.items) {
+          if (item.id.toLowerCase().trim() == lId) return true;
+          if (item.title.toLowerCase().trim() == title.toLowerCase().trim()) return true;
+          if (item.path != null && item.path!.isNotEmpty && (item.path == videoUrl || item.path == sourceUrl)) return true;
+        }
+      }
+    }
+
+    if (folders != null && fId != null) {
+      for (final folder in folders) {
+        if (folder.id.toLowerCase().trim() == fId) {
+          final fName = folder.name.toLowerCase().trim();
+          for (final course in courses) {
+            if (fName == course.title.toLowerCase().trim() || fName == course.id.toLowerCase().trim()) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    if (content.contains('Live course video stream for')) return true;
+
+    return false;
   }
 }

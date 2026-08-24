@@ -8,6 +8,7 @@ import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:markdown/markdown.dart' as md;
 import '../../core/constants/app_colors.dart';
+import '../../core/services/ai_service.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:provider/provider.dart';
 import '../../providers/deck_provider.dart';
@@ -397,7 +398,7 @@ Color _parseHexColor(String hex, Color defaultColor) {
   return defaultColor;
 }
 
-Map<String, Style> getHtmlStyleSheet(BuildContext context) {
+Map<String, Style> getHtmlStyleSheet(BuildContext context, {bool isArabic = false, bool isRtl = false}) {
   DeckProvider? provider;
   try {
     provider = Provider.of<DeckProvider>(context, listen: false);
@@ -411,21 +412,30 @@ Map<String, Style> getHtmlStyleSheet(BuildContext context) {
   final accent = _parseHexColor(custom['link'] ?? '#1a5276', const Color(0xFF1A5276));
   final fontSize = (double.tryParse(custom['font_size'] ?? '16') ?? 16.0).clamp(12.0, 36.0);
 
+  final rtl = isArabic || isRtl;
+
+  final fontFamily = rtl
+      ? '-apple-system, BlinkMacSystemFont, "Segoe UI", "Tahoma", "Cairo", "Tajawal", "Noto Sans Arabic", "Noto Sans", Helvetica, Arial, sans-serif'
+      : '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif';
+
   return {
     "html": Style(
       backgroundColor: bg,
       color: fg,
       fontSize: FontSize(fontSize),
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
+      fontFamily: fontFamily,
+      direction: rtl ? TextDirection.rtl : TextDirection.ltr,
       lineHeight: const LineHeight(1.6),
     ),
     "body": Style(
       margin: Margins.all(0),
       padding: HtmlPaddings.all(16),
+      direction: rtl ? TextDirection.rtl : TextDirection.ltr,
     ),
     "h1": Style(
       fontSize: FontSize(fontSize * 1.6),
       fontWeight: FontWeight.w600,
+      textAlign: rtl ? TextAlign.right : TextAlign.left,
       margin: Margins.only(top: 24, bottom: 16),
       padding: HtmlPaddings.only(bottom: 8),
       border: Border(bottom: BorderSide(color: border, width: 1)),
@@ -433,6 +443,7 @@ Map<String, Style> getHtmlStyleSheet(BuildContext context) {
     "h2": Style(
       fontSize: FontSize(fontSize * 1.3),
       fontWeight: FontWeight.w600,
+      textAlign: rtl ? TextAlign.right : TextAlign.left,
       margin: Margins.only(top: 24, bottom: 16),
       padding: HtmlPaddings.only(bottom: 6),
       border: Border(bottom: BorderSide(color: border, width: 1)),
@@ -440,15 +451,18 @@ Map<String, Style> getHtmlStyleSheet(BuildContext context) {
     "h3": Style(
       fontSize: FontSize(fontSize * 1.15),
       fontWeight: FontWeight.w600,
+      textAlign: rtl ? TextAlign.right : TextAlign.left,
       margin: Margins.only(top: 24, bottom: 16),
     ),
     "h4": Style(
       fontSize: FontSize(fontSize),
       fontWeight: FontWeight.w600,
+      textAlign: rtl ? TextAlign.right : TextAlign.left,
       margin: Margins.only(top: 24, bottom: 16),
     ),
     "p": Style(
       margin: Margins.only(bottom: 16),
+      textAlign: rtl ? TextAlign.right : TextAlign.left,
       lineHeight: const LineHeight(1.6),
     ),
     "a": Style(
@@ -459,27 +473,31 @@ Map<String, Style> getHtmlStyleSheet(BuildContext context) {
     "table": Style(
       margin: Margins.only(bottom: 16),
       border: Border.all(color: border, width: 1),
+      direction: rtl ? TextDirection.rtl : TextDirection.ltr,
     ),
     "th": Style(
       backgroundColor: canvasSubtle,
       padding: HtmlPaddings.all(10),
       fontWeight: FontWeight.bold,
+      textAlign: rtl ? TextAlign.right : TextAlign.left,
       border: Border.all(color: border, width: 1),
     ),
     "td": Style(
       padding: HtmlPaddings.all(10),
+      textAlign: rtl ? TextAlign.right : TextAlign.left,
       border: Border.all(color: border, width: 1),
     ),
     "li": Style(
       margin: Margins.only(bottom: 8),
+      textAlign: rtl ? TextAlign.right : TextAlign.left,
     ),
     "ul": Style(
       margin: Margins.only(bottom: 16),
-      padding: HtmlPaddings.only(left: 24),
+      padding: rtl ? HtmlPaddings.only(right: 24, left: 0) : HtmlPaddings.only(left: 24),
     ),
     "ol": Style(
       margin: Margins.only(bottom: 16),
-      padding: HtmlPaddings.only(left: 24),
+      padding: rtl ? HtmlPaddings.only(right: 24, left: 0) : HtmlPaddings.only(left: 24),
     ),
     "hr": Style(
       height: Height(2, Unit.px),
@@ -487,23 +505,43 @@ Map<String, Style> getHtmlStyleSheet(BuildContext context) {
       border: Border.all(style: BorderStyle.none),
       margin: Margins.symmetric(vertical: 24),
     ),
+    "pre": Style(
+      direction: TextDirection.ltr,
+      textAlign: TextAlign.left,
+    ),
+    "code": Style(
+      direction: TextDirection.ltr,
+    ),
   };
 }
 
 class MarkdownView extends StatelessWidget {
   final String data;
   final bool isSelectable;
+  final bool isArabic;
+  final bool autoDetectDirection;
+  final TextDirection? textDirection;
 
   const MarkdownView({
     super.key,
     required this.data,
     this.isSelectable = true,
+    this.isArabic = false,
+    this.autoDetectDirection = true,
+    this.textDirection,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isRtlDetected = isArabic || (autoDetectDirection && textDirection == null && AIService.isRtlContent(data));
+    final effectiveDirection = textDirection ?? (isRtlDetected ? TextDirection.rtl : TextDirection.ltr);
+
     if (data.trim().isEmpty) {
-      return const Text('*No content*', style: TextStyle(fontStyle: FontStyle.italic, color: AppColors.textSecondary));
+      return Text(
+        effectiveDirection == TextDirection.rtl ? '*لا يوجد محتوى*' : '*No content*',
+        style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.textSecondary),
+        textDirection: effectiveDirection,
+      );
     }
 
     final cleanedData = _sanitizeMarkdown(data);
@@ -522,10 +560,12 @@ class MarkdownView extends StatelessWidget {
       provider = context.watch<DeckProvider>();
     } catch (_) {}
 
-    return SelectionArea(
-      child: Html(
-        data: htmlData,
-        style: getHtmlStyleSheet(context),
+    return Directionality(
+      textDirection: effectiveDirection,
+      child: SelectionArea(
+        child: Html(
+          data: htmlData,
+          style: getHtmlStyleSheet(context, isArabic: isArabic, isRtl: effectiveDirection == TextDirection.rtl),
         onLinkTap: (url, attributes, element) async {
           if (url != null && url.isNotEmpty) {
             final uri = Uri.parse(url);
@@ -713,7 +753,7 @@ class MarkdownView extends StatelessWidget {
                       Html(
                         data: extensionContext.element?.innerHtml
                             .replaceFirst(RegExp(r'^(\[!NOTE\]|NOTE:|\[!TIP\]|TIP:|\[!IMPORTANT\]|IMPORTANT:|\[!WARNING\]|WARNING:|\[!CAUTION\]|CAUTION:)\s*', caseSensitive: false), '') ?? '',
-                        style: getHtmlStyleSheet(extensionContext.buildContext ?? context),
+                        style: getHtmlStyleSheet(extensionContext.buildContext ?? context, isArabic: isArabic),
                       ),
                     ],
                   ),
@@ -736,16 +776,21 @@ class MarkdownView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: blockquoteBg,
-                  borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
-                  border: Border(left: BorderSide(color: blockquoteBorderColor, width: 4)),
+                  borderRadius: isArabic
+                      ? const BorderRadius.horizontal(left: Radius.circular(8))
+                      : const BorderRadius.horizontal(right: Radius.circular(8)),
+                  border: isArabic
+                      ? Border(right: BorderSide(color: blockquoteBorderColor, width: 4))
+                      : Border(left: BorderSide(color: blockquoteBorderColor, width: 4)),
                 ),
                 child: Html(
                   data: extensionContext.element?.innerHtml ?? '',
-                  style: getHtmlStyleSheet(extensionContext.buildContext ?? context)..addAll({
+                  style: getHtmlStyleSheet(extensionContext.buildContext ?? context, isArabic: isArabic)..addAll({
                     "p": Style(
                       fontSize: FontSize(15),
                       fontStyle: FontStyle.italic,
                       color: blockquoteTextColor,
+                      textAlign: isArabic ? TextAlign.right : TextAlign.left,
                       lineHeight: const LineHeight(1.6),
                       margin: Margins.all(0),
                     ),
@@ -776,7 +821,7 @@ class MarkdownView extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

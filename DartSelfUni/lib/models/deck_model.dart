@@ -15,6 +15,11 @@ class Deck {
     int? createdAt,
   }) : createdAt = createdAt ?? DateTime.now().millisecondsSinceEpoch;
 
+  int get dueCardsCount => cards.where((c) => c.isDue).length;
+  int get masteredCardsCount => cards.where((c) => c.isGraduated).length;
+  int get totalCardsCount => cards.length;
+  int get masteryRate => cards.isNotEmpty ? ((masteredCardsCount / cards.length) * 100).round() : 0;
+
   factory Deck.fromJson(Map<String, dynamic> json) {
     return Deck(
       id: json['id'] as String,

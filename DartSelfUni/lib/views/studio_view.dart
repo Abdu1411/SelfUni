@@ -737,17 +737,17 @@ class _StudioViewState extends State<StudioView> {
                           _buildLabel('DESTINATION FOLDER (REQUIRED)'),
                           TextButton.icon(
                             onPressed: () async {
-                              final newFolder = await showDialog<Folder>(
+                              Folder? newFolder;
+                              await showDialog(
                                 context: context,
                                 builder: (ctx) => FolderModal(
                                   onSave: (name, color) async {
-                                    final folder = await context.read<DeckProvider>().addFolder(name, color: color);
-                                    if (ctx.mounted) Navigator.of(ctx).pop(folder);
+                                    newFolder = await context.read<DeckProvider>().addFolder(name, color: color);
                                   },
                                 ),
                               );
                               if (newFolder != null && mounted) {
-                                setState(() => _selectedFolderId = newFolder.id);
+                                setState(() => _selectedFolderId = newFolder!.id);
                               }
                             },
                             icon: const Icon(Icons.create_new_folder_outlined, size: 16, color: AppColors.primary),

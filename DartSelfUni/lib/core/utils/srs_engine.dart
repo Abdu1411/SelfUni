@@ -58,13 +58,20 @@ class SRSEngine {
     int interval = card.interval;
     double ease = card.ease;
     int reps = card.reps;
+    int consecutiveCorrect = card.consecutiveCorrect;
+    bool isGraduated = card.isGraduated;
 
     if (grade == Grade.again) {
+      consecutiveCorrect = 0;
       reps = 0;
       interval = 1; // 1 day
       ease = (ease - 0.2).clamp(1.3, double.infinity);
     } else if (grade == Grade.good) {
       reps += 1;
+      consecutiveCorrect += 1;
+      if (consecutiveCorrect >= 2) {
+        isGraduated = true;
+      }
       if (reps == 1) {
         interval = 1;
       } else if (reps == 2) {
@@ -74,6 +81,10 @@ class SRSEngine {
       }
     } else if (grade == Grade.easy) {
       reps += 1;
+      consecutiveCorrect += 1;
+      if (consecutiveCorrect >= 2) {
+        isGraduated = true;
+      }
       ease += 0.15;
       if (reps == 1) {
         interval = 4;
@@ -89,6 +100,8 @@ class SRSEngine {
       interval: interval,
       ease: ease,
       reps: reps,
+      consecutiveCorrect: consecutiveCorrect,
+      isGraduated: isGraduated,
       nextReview: nextReview,
     );
   }

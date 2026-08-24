@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/ai_service.dart';
+import '../../core/services/note_mastery_storage_service.dart';
 import 'markdown_view.dart';
+
+enum NoteEditorViewMode { edit, preview, previewArabic }
 
 class RichNoteEditor extends StatefulWidget {
   final String initialContent;
@@ -15,6 +19,7 @@ class RichNoteEditor extends StatefulWidget {
   final VoidCallback? onExportToNotes;
   final VoidCallback? onSRS;
   final String? title;
+  final String? noteKey;
   final bool showTimestamp;
   final VoidCallback? onTap;
   final Duration Function()? onTimestampRequested;
@@ -29,6 +34,7 @@ class RichNoteEditor extends StatefulWidget {
     this.onCustomExport,
     this.onSRS,
     this.title,
+    this.noteKey,
     this.showTimestamp = true,
     this.onTap,
     this.onTimestampRequested,
@@ -40,9 +46,27 @@ class RichNoteEditor extends StatefulWidget {
 
 class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAliveClientMixin {
   late TextEditingController _controller;
-  bool _isEditMode = true;
+  NoteEditorViewMode _viewMode = NoteEditorViewMode.edit;
+  bool get _isEditMode => _viewMode == NoteEditorViewMode.edit;
+
   String _saveStatus = 'idle'; // 'idle' | 'saving' | 'saved'
   Timer? _debounceTimer;
+
+  // Arabic Translation State & Service
+  final AIService _aiService = AIService();
+  String _arabicContent = '';
+  String _lastTranslatedText = '';
+  bool _isTranslating = false;
+  String? _translationError;
+  TextDirection? _previewDirectionOverride;
+
+  // Note Mastery State & Service
+  final NoteMasteryStorageService _masteryStorage = NoteMasteryStorageService();
+  int _masteryPercentage = 0;
+  bool _isGraduated = false;
+
+  String get _effectiveNoteKey =>
+      widget.noteKey ?? widget.title ?? 'note_${widget.initialContent.hashCode}';
 
   @override
   bool get wantKeepAlive => true;
@@ -51,6 +75,17 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialContent);
+    _loadMastery();
+  }
+
+  Future<void> _loadMastery() async {
+    final m = await _masteryStorage.getNoteMastery(_effectiveNoteKey);
+    if (mounted) {
+      setState(() {
+        _masteryPercentage = m?.effectiveMasteryPercentage ?? 0;
+        _isGraduated = m?.isGraduated ?? false;
+      });
+    }
   }
 
   @override
@@ -58,6 +93,9 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialContent != widget.initialContent && _controller.text != widget.initialContent) {
       _controller.text = widget.initialContent;
+    }
+    if (oldWidget.noteKey != widget.noteKey || oldWidget.title != widget.title) {
+      _loadMastery();
     }
   }
 
@@ -83,6 +121,116 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
         });
       }
     });
+  }
+
+  Future<void> _fetchArabicTranslation({bool force = false}) async {
+    final currentText = _controller.text;
+    if (currentText.trim().isEmpty) {
+      if (mounted) {
+        setState(() {
+          _arabicContent = '';
+          _lastTranslatedText = '';
+          _isTranslating = false;
+          _translationError = null;
+        });
+      }
+      return;
+    }
+
+    if (!force && _arabicContent.isNotEmpty && _lastTranslatedText == currentText) {
+      return;
+    }
+
+    setState(() {
+      _isTranslating = true;
+      _translationError = null;
+    });
+
+    try {
+      final translated = await _aiService.translateNotesToArabic(notes: currentText);
+      if (mounted) {
+        setState(() {
+          _arabicContent = translated;
+          _lastTranslatedText = currentText;
+          _isTranslating = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isTranslating = false;
+          _translationError = 'Failed to translate notes: $e';
+        });
+      }
+    }
+  }
+
+  void _switchToArabicPreview() {
+    setState(() {
+      _viewMode = NoteEditorViewMode.previewArabic;
+    });
+    _fetchArabicTranslation();
+  }
+
+  void _copyArabicNotes() {
+    if (_arabicContent.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: _arabicContent));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📋 Copied Arabic notes to clipboard! • تم نسخ الملاحظات بالعربية'),
+          backgroundColor: AppColors.success,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _confirmApplyArabicToEditor() {
+    if (_arabicContent.trim().isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
+            SizedBox(width: 8),
+            Text('Replace Note with Arabic?'),
+          ],
+        ),
+        content: const Text(
+          'This will replace your current editor content with the translated Arabic notes.\n\nهل تريد استبدال نص الملاحظات الحالي بالترجمة العربية؟',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel / إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _controller.text = _arabicContent;
+              _triggerAutoSave(_arabicContent);
+              setState(() {
+                _viewMode = NoteEditorViewMode.edit;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('✍️ Replaced editor content with Arabic notes!'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF059669),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Replace / استبدال'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatTimestamp(Duration d) {
@@ -662,15 +810,78 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Mastery Retention Text Indicator
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _isGraduated
+                              ? const Color(0xFFFEF3C7)
+                              : _getMasteryPillColor(_masteryPercentage).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _isGraduated
+                                ? const Color(0xFFF59E0B)
+                                : _getMasteryPillColor(_masteryPercentage).withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_isGraduated)
+                              const Text('🎓', style: TextStyle(fontSize: 13))
+                            else
+                              Icon(Icons.psychology, size: 16, color: _getMasteryPillColor(_masteryPercentage)),
+                            const SizedBox(width: 4),
+                            Text(
+                              _isGraduated ? 'Mastered $_masteryPercentage%' : 'Mastery: $_masteryPercentage%',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: _isGraduated
+                                    ? const Color(0xFF065F46)
+                                    : _getMasteryPillColor(_masteryPercentage),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+
                       // Edit / Preview Mode Toggle Button
                       IconButton(
-                        onPressed: () => setState(() => _isEditMode = !_isEditMode),
+                        onPressed: () {
+                          setState(() {
+                            if (_viewMode == NoteEditorViewMode.edit) {
+                              _viewMode = NoteEditorViewMode.preview;
+                            } else {
+                              _viewMode = NoteEditorViewMode.edit;
+                            }
+                          });
+                        },
                         icon: Icon(
                           _isEditMode ? CupertinoIcons.eyeglasses : Icons.edit,
                           size: 20,
                         ),
                         color: _isEditMode ? AppColors.primary : const Color(0xFF64748B),
                         tooltip: _isEditMode ? 'Preview Mode' : 'Edit Mode',
+                      ),
+                      const SizedBox(width: 4),
+
+                      // Arabic Preview Mode Toggle Button
+                      IconButton(
+                        onPressed: () {
+                          if (_viewMode == NoteEditorViewMode.previewArabic) {
+                            setState(() => _viewMode = NoteEditorViewMode.edit);
+                          } else {
+                            _switchToArabicPreview();
+                          }
+                        },
+                        icon: Icon(
+                          Icons.g_translate_outlined,
+                          size: 20,
+                          color: _viewMode == NoteEditorViewMode.previewArabic ? const Color(0xFF059669) : const Color(0xFF64748B),
+                        ),
+                        tooltip: _viewMode == NoteEditorViewMode.previewArabic ? 'Exit Arabic Preview' : 'Preview in Arabic • معاينة بالعربية',
                       ),
                       const SizedBox(width: 8),
 
@@ -824,7 +1035,7 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: _isEditMode
+              child: _viewMode == NoteEditorViewMode.edit
                   ? Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -851,20 +1062,81 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                         onTap: widget.onTap,
                       ),
                     )
-                  : SingleChildScrollView(
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: MarkdownView(
-                          data: _controller.text.isEmpty ? '*No notes taken yet. Click "Edit Mode" to start typing.*' : _controller.text,
-                        ),
-                      ),
-                    ),
+                  : _viewMode == NoteEditorViewMode.preview
+                      ? SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (_controller.text.trim().isNotEmpty) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: const Color(0xFFCBD5E1)),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              (_previewDirectionOverride ?? (AIService.isRtlContent(_controller.text) ? TextDirection.rtl : TextDirection.ltr)) == TextDirection.rtl
+                                                  ? Icons.format_textdirection_r_to_l
+                                                  : Icons.format_textdirection_l_to_r,
+                                              size: 14,
+                                              color: const Color(0xFF475569),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              (_previewDirectionOverride ?? (AIService.isRtlContent(_controller.text) ? TextDirection.rtl : TextDirection.ltr)) == TextDirection.rtl
+                                                  ? 'RTL'
+                                                  : 'LTR',
+                                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            InkWell(
+                                              onTap: () {
+                                                setState(() {
+                                                  final current = _previewDirectionOverride ?? (AIService.isRtlContent(_controller.text) ? TextDirection.rtl : TextDirection.ltr);
+                                                  _previewDirectionOverride = current == TextDirection.rtl ? TextDirection.ltr : TextDirection.rtl;
+                                                });
+                                              },
+                                              child: const Padding(
+                                                padding: EdgeInsets.symmetric(horizontal: 2),
+                                                child: Text(
+                                                  'Switch',
+                                                  style: TextStyle(fontSize: 10.5, color: AppColors.primary, fontWeight: FontWeight.bold),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: MarkdownView(
+                                  data: _controller.text.isEmpty ? '*No notes taken yet. Click "Edit Mode" to start typing.*' : _controller.text,
+                                  textDirection: _previewDirectionOverride,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _buildArabicPreviewView(),
             ),
           ),
 
@@ -882,13 +1154,216 @@ class _RichNoteEditorState extends State<RichNoteEditor> with AutomaticKeepAlive
                 const SizedBox(width: 6),
                 Text('$wordCount words • $lineCount lines', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                 const Spacer(),
-                const Text('Markdown & TeX Math Enabled', style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold)),
+                Text(
+                  _viewMode == NoteEditorViewMode.previewArabic
+                      ? 'Arabic Translation • معاينة باللغة العربية'
+                      : 'Markdown & TeX Math Enabled',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: _viewMode == NoteEditorViewMode.previewArabic ? const Color(0xFF059669) : AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildArabicPreviewView() {
+    if (_isTranslating) {
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
+              BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3.5,
+                  color: Color(0xFF059669),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Translating notes into Arabic...',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'جاري ترجمة الملاحظات إلى اللغة العربية مع الحفاظ على الأكواد والمعادلات الرياضية...',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                textDirection: TextDirection.rtl,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_translationError != null) {
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          constraints: const BoxConstraints(maxWidth: 500),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFECDD3)),
+            boxShadow: const [
+              BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFEF2F2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.translate, size: 36, color: Color(0xFFE11D48)),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Arabic Translation Notice',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _translationError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                alignment: WrapAlignment.center,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => setState(() => _viewMode = NoteEditorViewMode.edit),
+                    child: const Text('Back to Editor'),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _fetchArabicTranslation(force: true),
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Retry Translation'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final arabicText = _arabicContent.trim().isEmpty
+        ? '*لا توجد ملاحظات لعرضها. اكتب ملاحظاتك ثم اضغط على معاينة بالعربية.*'
+        : _arabicContent;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Arabic Sub-header Toolbar
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECFDF5), // emerald-50
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFA7F3D0)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF059669),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'AR',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'معاينة باللغة العربية • Arabic Preview',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFF065F46),
+                    ),
+                  ),
+                ),
+                // Re-translate button
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 18, color: Color(0xFF059669)),
+                  tooltip: 'Re-translate with AI (إعادة الترجمة)',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => _fetchArabicTranslation(force: true),
+                ),
+                // Copy Arabic text
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 17, color: Color(0xFF059669)),
+                  tooltip: 'Copy Arabic Markdown (نسخ النص العربي)',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _copyArabicNotes,
+                ),
+                // Apply to editor button
+                IconButton(
+                  icon: const Icon(Icons.download_done, size: 18, color: Color(0xFF059669)),
+                  tooltip: 'Replace Editor Content with Arabic (استبدال في المحرر)',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _confirmApplyArabicToEditor,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: MarkdownView(
+              data: arabicText,
+              isArabic: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getMasteryPillColor(int score) {
+    if (score >= 80) return const Color(0xFF059669); // Emerald
+    if (score >= 40) return const Color(0xFFD97706); // Amber
+    return const Color(0xFF64748B); // Slate
   }
 }
 

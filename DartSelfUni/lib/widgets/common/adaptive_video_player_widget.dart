@@ -654,105 +654,124 @@ class AdaptiveVideoPlayerWidgetState extends State<AdaptiveVideoPlayerWidget> {
                           ),
                           const SizedBox(height: 6),
                           // Button Row
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 22),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                onPressed: togglePlay,
-                              ),
-                              const SizedBox(width: 12),
-                              // Mute/Volume controls
-                              IconButton(
-                                icon: Icon(
-                                  _isMuted
-                                      ? Icons.volume_off
-                                      : (_volume > 50 ? Icons.volume_up : Icons.volume_down),
-                                  color: Colors.white70,
-                                  size: 18,
-                                ),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                onPressed: () {
-                                  if (_isMuted) {
-                                    _player?.setVolume(100.0);
-                                  } else {
-                                    _player?.setVolume(0.0);
-                                  }
-                                },
-                              ),
-                              const SizedBox(width: 6),
-                              SizedBox(
-                                width: 60,
-                                child: SliderTheme(
-                                  data: SliderThemeData(
-                                    trackHeight: 2,
-                                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 3),
-                                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 6),
-                                    activeTrackColor: Colors.white,
-                                    inactiveTrackColor: Colors.white24,
-                                    thumbColor: Colors.white,
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final width = constraints.maxWidth;
+                              final isCompact = width < 480;
+                              final isUltraCompact = width < 340;
+
+                              return Row(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 22),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: togglePlay,
                                   ),
-                                  child: Slider(
-                                    value: _isMuted ? 0.0 : _volume,
-                                    min: 0.0,
-                                    max: 100.0,
-                                    onChanged: (val) {
-                                      _player?.setVolume(val);
+                                  const SizedBox(width: 8),
+                                  // Mute/Volume controls
+                                  IconButton(
+                                    icon: Icon(
+                                      _isMuted
+                                          ? Icons.volume_off
+                                          : (_volume > 50 ? Icons.volume_up : Icons.volume_down),
+                                      color: Colors.white70,
+                                      size: 18,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () {
+                                      if (_isMuted) {
+                                        _player?.setVolume(100.0);
+                                      } else {
+                                        _player?.setVolume(0.0);
+                                      }
                                     },
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                '${_formatDuration(_position)} / ${_formatDuration(_duration)}',
-                                style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                              const Spacer(),
-                              // Playback Rate
-                              DropdownButtonHideUnderline(
-                                child: DropdownButton<double>(
-                                  value: _playbackRate,
-                                  dropdownColor: const Color(0xFF0F172A),
-                                  icon: const Icon(Icons.speed, color: Colors.white70, size: 16),
-                                  items: const [
-                                    DropdownMenuItem(value: 0.75, child: Text('0.75x', style: TextStyle(color: Colors.white, fontSize: 11))),
-                                    DropdownMenuItem(value: 1.0, child: Text('1.0x', style: TextStyle(color: Colors.white, fontSize: 11))),
-                                    DropdownMenuItem(value: 1.25, child: Text('1.25x', style: TextStyle(color: Colors.white, fontSize: 11))),
-                                    DropdownMenuItem(value: 1.5, child: Text('1.5x', style: TextStyle(color: Colors.white, fontSize: 11))),
-                                    DropdownMenuItem(value: 2.0, child: Text('2.0x', style: TextStyle(color: Colors.white, fontSize: 11))),
+                                  if (!isCompact) ...[
+                                    const SizedBox(width: 4),
+                                    SizedBox(
+                                      width: 50,
+                                      child: SliderTheme(
+                                        data: const SliderThemeData(
+                                          trackHeight: 2,
+                                          thumbShape: RoundSliderThumbShape(enabledThumbRadius: 3),
+                                          overlayShape: RoundSliderOverlayShape(overlayRadius: 6),
+                                          activeTrackColor: Colors.white,
+                                          inactiveTrackColor: Colors.white24,
+                                          thumbColor: Colors.white,
+                                        ),
+                                        child: Slider(
+                                          value: _isMuted ? 0.0 : _volume,
+                                          min: 0.0,
+                                          max: 100.0,
+                                          onChanged: (val) {
+                                            _player?.setVolume(val);
+                                          },
+                                        ),
+                                      ),
+                                    ),
                                   ],
-                                  onChanged: (rate) {
-                                    if (rate != null) {
-                                      _player?.setRate(rate);
-                                    }
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Fullscreen trigger button
-                              IconButton(
-                                icon: const Icon(Icons.fullscreen, color: Colors.white70, size: 20),
-                                tooltip: 'Fullscreen',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                onPressed: _toggleFullscreen,
-                              ),
-                              const SizedBox(width: 12),
-                              IconButton(
-                                icon: const Icon(Icons.open_in_new, color: Colors.white70, size: 18),
-                                tooltip: 'Open in Browser',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                onPressed: () async {
-                                  final uri = Uri.parse(widget.videoUrl);
-                                  if (await canLaunchUrl(uri)) {
-                                    await launchUrl(uri);
-                                  }
-                                },
-                              ),
-                            ],
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      isUltraCompact
+                                          ? _formatDuration(_position)
+                                          : '${_formatDuration(_position)} / ${_formatDuration(_duration)}',
+                                      style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  // Playback Rate
+                                  if (!isUltraCompact) ...[
+                                    DropdownButtonHideUnderline(
+                                      child: DropdownButton<double>(
+                                        value: _playbackRate,
+                                        dropdownColor: const Color(0xFF0F172A),
+                                        icon: const Icon(Icons.speed, color: Colors.white70, size: 16),
+                                        items: const [
+                                          DropdownMenuItem(value: 0.75, child: Text('0.75x', style: TextStyle(color: Colors.white, fontSize: 11))),
+                                          DropdownMenuItem(value: 1.0, child: Text('1.0x', style: TextStyle(color: Colors.white, fontSize: 11))),
+                                          DropdownMenuItem(value: 1.25, child: Text('1.25x', style: TextStyle(color: Colors.white, fontSize: 11))),
+                                          DropdownMenuItem(value: 1.5, child: Text('1.5x', style: TextStyle(color: Colors.white, fontSize: 11))),
+                                          DropdownMenuItem(value: 2.0, child: Text('2.0x', style: TextStyle(color: Colors.white, fontSize: 11))),
+                                        ],
+                                        onChanged: (rate) {
+                                          if (rate != null) {
+                                            _player?.setRate(rate);
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  // Fullscreen trigger button
+                                  IconButton(
+                                    icon: const Icon(Icons.fullscreen, color: Colors.white70, size: 20),
+                                    tooltip: 'Fullscreen',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: _toggleFullscreen,
+                                  ),
+                                  if (!isCompact) ...[
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.open_in_new, color: Colors.white70, size: 18),
+                                      tooltip: 'Open in Browser',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () async {
+                                        final uri = Uri.parse(widget.videoUrl);
+                                        if (await canLaunchUrl(uri)) {
+                                          await launchUrl(uri);
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),

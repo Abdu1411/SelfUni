@@ -160,6 +160,8 @@ class Flashcard {
   final int interval;
   final double ease;
   final int reps;
+  final int consecutiveCorrect;
+  final bool isGraduated;
   
   // To track deck association in flatten views
   final String? deckId;
@@ -177,9 +179,23 @@ class Flashcard {
     required this.interval,
     required this.ease,
     required this.reps,
+    this.consecutiveCorrect = 0,
+    this.isGraduated = false,
     this.deckId,
     int? createdAt,
   }) : createdAt = createdAt ?? DateTime.now().millisecondsSinceEpoch;
+
+  /// Returns true if this card is currently due for review.
+  /// Graduated/mastered cards are considered permanently retained and not due in normal decay.
+  bool get isDue => !isGraduated && (reps == 0 || nextReview <= DateTime.now().millisecondsSinceEpoch);
+
+  /// Computes a 0-100% mastery score for this card.
+  int get masteryScore {
+    if (isGraduated) return 100;
+    final easeScore = ((ease / 3.0) * 70).clamp(0.0, 70.0);
+    final repScore = ((reps / 5.0) * 30).clamp(0.0, 30.0);
+    return (easeScore + repScore).round().clamp(0, 100);
+  }
 
   factory Flashcard.fromJson(Map<String, dynamic> json, {String? deckId}) {
     return Flashcard(
@@ -194,6 +210,8 @@ class Flashcard {
       interval: json['interval'] as int,
       ease: (json['ease'] as num).toDouble(),
       reps: json['reps'] as int,
+      consecutiveCorrect: json['consecutiveCorrect'] as int? ?? (json['reps'] as int? ?? 0),
+      isGraduated: json['isGraduated'] as bool? ?? (json['interval'] as int? ?? 0) >= 6,
       deckId: deckId,
       createdAt: json['createdAt'] as int?,
     );
@@ -212,6 +230,8 @@ class Flashcard {
       'interval': interval,
       'ease': ease,
       'reps': reps,
+      'consecutiveCorrect': consecutiveCorrect,
+      'isGraduated': isGraduated,
       'createdAt': createdAt,
     };
   }
@@ -228,6 +248,8 @@ class Flashcard {
     int? interval,
     double? ease,
     int? reps,
+    int? consecutiveCorrect,
+    bool? isGraduated,
     String? deckId,
   }) {
     return Flashcard(
@@ -242,6 +264,8 @@ class Flashcard {
       interval: interval ?? this.interval,
       ease: ease ?? this.ease,
       reps: reps ?? this.reps,
+      consecutiveCorrect: consecutiveCorrect ?? this.consecutiveCorrect,
+      isGraduated: isGraduated ?? this.isGraduated,
       deckId: deckId ?? this.deckId,
       createdAt: createdAt,
     );

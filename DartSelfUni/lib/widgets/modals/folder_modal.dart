@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 
 class FolderModal extends StatefulWidget {
   final String? initialName;
   final String? initialColor;
-  final Function(String name, String color) onSave;
+  final FutureOr<void> Function(String name, String color) onSave;
 
   const FolderModal({
     super.key,
@@ -20,6 +21,7 @@ class FolderModal extends StatefulWidget {
 class _FolderModalState extends State<FolderModal> {
   late TextEditingController _nameController;
   late String _selectedColor;
+  bool _isSaving = false;
 
   final List<String> _colors = [
     '#2563eb', // blue
@@ -43,6 +45,20 @@ class _FolderModalState extends State<FolderModal> {
   void dispose() {
     _nameController.dispose();
     super.dispose();
+  }
+
+  void _handleSave() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty || _isSaving) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await widget.onSave(name, _selectedColor);
+    } catch (_) {}
+
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -77,6 +93,8 @@ class _FolderModalState extends State<FolderModal> {
             const SizedBox(height: 8),
             TextField(
               controller: _nameController,
+              autofocus: true,
+              onSubmitted: (_) => _handleSave(),
               decoration: InputDecoration(
                 hintText: 'e.g., System Design',
                 border: OutlineInputBorder(
@@ -136,24 +154,25 @@ class _FolderModalState extends State<FolderModal> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
                   child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
-                  onPressed: () {
-                    if (_nameController.text.trim().isNotEmpty) {
-                      widget.onSave(_nameController.text.trim(), _selectedColor);
-                      Navigator.of(context).pop();
-                    }
-                  },
+                  onPressed: _isSaving ? null : _handleSave,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
-                  child: Text(widget.initialName == null ? 'Create' : 'Save'),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(widget.initialName == null ? 'Create' : 'Save'),
                 ),
               ],
             ),

@@ -59,19 +59,19 @@ class _SelectFolderModalState extends State<SelectFolderModal> {
 
   void _openCreateFolder() async {
     final deckProvider = context.read<DeckProvider>();
-    final newFolder = await showDialog<Folder>(
+    Folder? createdFolder;
+    await showDialog(
       context: context,
       builder: (ctx) => FolderModal(
         onSave: (name, color) async {
-          final folder = await deckProvider.addFolder(name, color: color);
-          if (ctx.mounted) Navigator.of(ctx).pop(folder);
+          createdFolder = await deckProvider.addFolder(name, color: color);
         },
       ),
     );
 
-    if (newFolder != null && mounted) {
+    if (createdFolder != null && mounted) {
       setState(() {
-        _selectedFolderId = newFolder.id;
+        _selectedFolderId = createdFolder!.id;
       });
     }
   }
@@ -92,10 +92,11 @@ class _SelectFolderModalState extends State<SelectFolderModal> {
       child: Container(
         width: 440,
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               children: [
                 Container(
@@ -241,14 +242,16 @@ class _SelectFolderModalState extends State<SelectFolderModal> {
             ],
 
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(null),
                   child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
                 ),
-                const SizedBox(width: 12),
                 ElevatedButton(
                   onPressed: _selectedFolderId == null
                       ? null
@@ -256,7 +259,7 @@ class _SelectFolderModalState extends State<SelectFolderModal> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: const Text('Confirm & Generate', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -266,6 +269,7 @@ class _SelectFolderModalState extends State<SelectFolderModal> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -5,12 +5,16 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/note_mastery_storage_service.dart';
 import '../../providers/deck_provider.dart';
 import '../../models/lesson_model.dart';
 import '../../models/folder_model.dart';
+import '../../models/note_mastery_model.dart';
 import '../widgets/modals/folder_modal.dart';
 import '../widgets/modals/move_resource_modal.dart';
 import '../widgets/modals/create_note_modal.dart';
+import '../widgets/modals/due_notes_review_modal.dart';
+import '../widgets/modals/note_mastery_modal.dart';
 import 'lesson_detail_view.dart';
 import 'pdf_viewer_view.dart';
 
@@ -27,6 +31,34 @@ class _LessonsViewState extends State<LessonsView> {
   String _searchQuery = '';
   int _selectedFilter = 0; // 0: All, 1: PDFs, 2: Notes Only
   String? _activeFolderId;
+
+  final NoteMasteryStorageService _masteryStorage = NoteMasteryStorageService();
+  Map<String, int> _noteMasteryScores = {};
+  Map<String, NoteMasteryModel> _masteryModels = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMasteries();
+  }
+
+  Future<void> _loadMasteries() async {
+    final models = await _masteryStorage.loadAllMasteries();
+    final scores = await _masteryStorage.getAllEffectiveMasteryScores();
+    if (mounted) {
+      setState(() {
+        _masteryModels = models;
+        _noteMasteryScores = scores;
+      });
+    }
+  }
+
+  Color _getMasteryColor(int score) {
+    if (score >= 80) return const Color(0xFF059669); // Emerald
+    if (score >= 60) return const Color(0xFF10B981); // Green
+    if (score >= 40) return const Color(0xFFD97706); // Amber
+    return const Color(0xFFE11D48); // Rose / Red
+  }
 
   Future<void> _handleImportPdf() async {
     if (!mounted) return;
@@ -82,20 +114,18 @@ class _LessonsViewState extends State<LessonsView> {
         if (selected == 'create') {
           if (!mounted) return;
           // Open new folder modal
-          final newFolder = await showDialog<Folder>(
+          Folder? newFolder;
+          await showDialog(
             context: context,
             builder: (ctx) => FolderModal(
               onSave: (name, color) async {
-                final folder = await deckProvider.addFolder(name, color: color);
-                if (ctx.mounted) {
-                  Navigator.of(ctx).pop(folder);
-                }
+                newFolder = await deckProvider.addFolder(name, color: color);
               },
             ),
           );
           if (newFolder == null) return;
-          targetFolderId = newFolder.id;
-          setState(() => _activeFolderId = newFolder.id);
+          targetFolderId = newFolder!.id;
+          setState(() => _activeFolderId = newFolder!.id);
         } else {
           targetFolderId = selected;
           setState(() => _activeFolderId = selected);
@@ -201,7 +231,7 @@ class _LessonsViewState extends State<LessonsView> {
       initialFolderId: _activeFolderId,
     );
 
-    if (result == null) return;
+    if (result == null || !mounted) return;
 
     final title = result['title'] as String;
     final topic = result['topic'] as String;
@@ -372,6 +402,11 @@ class _LessonsViewState extends State<LessonsView> {
       if (_selectedFilter == 2) {
         return l.pdfUrl == null && l.pdfFilename == null;
       }
+      if (_selectedFilter == 3) {
+        final m = _masteryModels[l.id] ?? _masteryModels[l.title];
+        final score = _noteMasteryScores[l.id] ?? _noteMasteryScores[l.title] ?? 0;
+        return (m?.isGraduated ?? false) || score >= 90;
+      }
       return true;
     }).toList();
 
@@ -394,16 +429,24 @@ class _LessonsViewState extends State<LessonsView> {
     );
 
     int totalPdfs = allLessons.where((l) => l.isNote && (l.pdfUrl != null || l.pdfFilename != null)).length;
+    int totalMastered = allLessons.where((l) {
+      if (!l.isNote) return false;
+      if (l.isFromLocalCourse(deckProvider.courses, deckProvider.folders)) return false;
+      final m = _masteryModels[l.id] ?? _masteryModels[l.title];
+      final score = _noteMasteryScores[l.id] ?? _noteMasteryScores[l.title] ?? 0;
+      return (m?.isGraduated ?? false) || score >= 90;
+    }).length;
+
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 800;
+    final isMobile = screenWidth < 1000;
     
     return Container(
       color: const Color(0xFFFAFAFA),
       child: Column(
         children: [
-          _buildHeader(isMobile, activeFolder),
+          _buildHeader(isMobile, activeFolder, filteredLessons, deckProvider),
           const Divider(height: 1, color: AppColors.border),
-          _buildFilterBar(filteredLessons.length, totalPdfs, isMobile),
+          _buildFilterBar(filteredLessons.length, totalPdfs, totalMastered, isMobile),
           const Divider(height: 1, color: AppColors.border),
           Expanded(
             child: displayFolders.isEmpty && filteredLessons.isEmpty
@@ -417,7 +460,11 @@ class _LessonsViewState extends State<LessonsView> {
     );
   }
 
-  Widget _buildHeader(bool isMobile, Folder activeFolder) {
+  Widget _buildHeader(bool isMobile, Folder activeFolder, List<Lesson> filteredLessons, DeckProvider deckProvider) {
+    final dueCount = filteredLessons
+        .where((l) => l.isNote && !l.isFromLocalCourse(deckProvider.courses, deckProvider.folders) && (_noteMasteryScores[l.id] ?? _noteMasteryScores[l.title] ?? 0) < 60)
+        .length;
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 32, vertical: 24),
       color: Colors.white,
@@ -474,9 +521,38 @@ class _LessonsViewState extends State<LessonsView> {
                   ],
                 ),
               ),
-              if (!isMobile)
-                Row(
-                  children: [
+              if (!isMobile) ...[
+                const SizedBox(width: 16),
+                Flexible(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.end,
+                    children: [
+                      // DUE NOTES REVIEW BUTTON
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await DueNotesReviewModal.show(
+                            context,
+                            folderId: _activeFolderId,
+                            onMasteryChanged: _loadMasteries,
+                          );
+                          _loadMasteries();
+                        },
+                        icon: const Icon(Icons.psychology, size: 18),
+                        label: Text(
+                          dueCount > 0 ? 'DUE REVIEW ($dueCount)' : 'DUE REVIEW',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: dueCount > 0 ? const Color(0xFFE11D48) : const Color(0xFF059669),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                      ),
+                    const SizedBox(width: 12),
                     ElevatedButton.icon(
                       onPressed: () => _openNewFolderModal(context),
                       icon: const Icon(Icons.create_new_folder, size: 18),
@@ -528,8 +604,10 @@ class _LessonsViewState extends State<LessonsView> {
                         elevation: 0,
                       ),
                     ),
-                  ],
+                    ],
+                  ),
                 ),
+              ],
             ],
           ),
           if (isMobile) ...[
@@ -538,6 +616,27 @@ class _LessonsViewState extends State<LessonsView> {
               spacing: 8,
               runSpacing: 8,
               children: [
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await DueNotesReviewModal.show(
+                      context,
+                      folderId: _activeFolderId,
+                      onMasteryChanged: _loadMasteries,
+                    );
+                    _loadMasteries();
+                  },
+                  icon: const Icon(Icons.psychology, size: 16),
+                  label: Text(
+                    dueCount > 0 ? 'DUE ($dueCount)' : 'DUE',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: dueCount > 0 ? const Color(0xFFE11D48) : const Color(0xFF059669),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
                 ElevatedButton.icon(
                   onPressed: () => _openNewFolderModal(context),
                   icon: const Icon(Icons.create_new_folder, size: 16),
@@ -590,7 +689,7 @@ class _LessonsViewState extends State<LessonsView> {
     );
   }
 
-  Widget _buildFilterBar(int totalCount, int pdfCount, bool isMobile) {
+  Widget _buildFilterBar(int totalCount, int pdfCount, int masteredCount, bool isMobile) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 32, vertical: 16),
       color: Colors.white,
@@ -618,7 +717,7 @@ class _LessonsViewState extends State<LessonsView> {
             ),
           ),
           const SizedBox(width: 16),
-          _buildSegmentedFilter(totalCount, pdfCount),
+          _buildSegmentedFilter(totalCount, pdfCount, masteredCount),
           if (_activeFolderId != null) ...[
             const SizedBox(width: 16),
             OutlinedButton.icon(
@@ -638,7 +737,7 @@ class _LessonsViewState extends State<LessonsView> {
     );
   }
 
-  Widget _buildSegmentedFilter(int totalCount, int pdfCount) {
+  Widget _buildSegmentedFilter(int totalCount, int pdfCount, int masteredCount) {
     return Container(
       height: 40,
       decoration: BoxDecoration(
@@ -654,6 +753,8 @@ class _LessonsViewState extends State<LessonsView> {
           _buildFilterButton('PDFs ($pdfCount)', 1, Icons.picture_as_pdf),
           Container(width: 1, color: const Color(0xFFE2E8F0)),
           _buildFilterButton('Notes Only', 2, null),
+          Container(width: 1, color: const Color(0xFFE2E8F0)),
+          _buildFilterButton('🎓 Mastered ($masteredCount)', 3, null),
         ],
       ),
     );
@@ -767,9 +868,13 @@ class _LessonsViewState extends State<LessonsView> {
                                   children: [
                                     const Icon(Icons.menu_book, size: 12, color: Color(0xFF64748B)),
                                     const SizedBox(width: 4),
-                                    Text(
-                                      '${folderLessons.length} ${folderLessons.length == 1 ? 'document' : 'documents'}',
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                                    Flexible(
+                                      child: Text(
+                                        '${folderLessons.length} ${folderLessons.length == 1 ? 'document' : 'documents'}',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -876,15 +981,22 @@ class _LessonsViewState extends State<LessonsView> {
     final DateFormat formatter = DateFormat('MMM dd');
     final dateStr = formatter.format(DateTime.fromMillisecondsSinceEpoch(lesson.createdAt));
     final isPdf = lesson.pdfUrl != null || lesson.pdfFilename != null;
+    final masteryModel = _masteryModels[lesson.id] ?? _masteryModels[lesson.title];
+    final bool isGraduated = masteryModel?.isGraduated ?? false;
+    final int score = _noteMasteryScores[lesson.id] ?? _noteMasteryScores[lesson.title] ?? 0;
+    final Color masteryColor = isGraduated ? const Color(0xFF059669) : _getMasteryColor(score);
     
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isGraduated ? const Color(0xFFF59E0B) : AppColors.border,
+          width: isGraduated ? 1.2 : 1.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: isGraduated ? const Color(0xFFF59E0B).withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -924,33 +1036,85 @@ class _LessonsViewState extends State<LessonsView> {
                   Expanded(
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isPdf ? const Color(0xFFFFF1F2) : const Color(0xFFF0FDF4),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: isPdf ? const Color(0xFFFFE4E6) : const Color(0xFFDCFCE7)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(isPdf ? Icons.picture_as_pdf : Icons.article_outlined, size: 12, color: isPdf ? const Color(0xFFE11D48) : const Color(0xFF16A34A)),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                isPdf ? 'PDF DOCUMENT' : lesson.topic.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w900,
-                                  color: isPdf ? const Color(0xFFE11D48) : const Color(0xFF16A34A),
-                                  letterSpacing: 0.5,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            constraints: const BoxConstraints(maxWidth: 160),
+                            decoration: BoxDecoration(
+                              color: isPdf ? const Color(0xFFFFF1F2) : const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: isPdf ? const Color(0xFFFFE4E6) : const Color(0xFFDCFCE7)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(isPdf ? Icons.picture_as_pdf : Icons.article_outlined, size: 12, color: isPdf ? const Color(0xFFE11D48) : const Color(0xFF16A34A)),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    isPdf ? 'PDF DOCUMENT' : lesson.topic.toUpperCase(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: isPdf ? const Color(0xFFE11D48) : const Color(0xFF16A34A),
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              ],
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () async {
+                              await showDialog(
+                                context: context,
+                                builder: (ctx) => NoteMasteryModal(
+                                  noteKey: lesson.id,
+                                  noteTitle: lesson.title,
+                                  noteContent: lesson.content.isNotEmpty
+                                      ? lesson.content
+                                      : (lesson.pdfFilename != null ? 'Study notes for ${lesson.title} (${lesson.pdfFilename})' : lesson.topic),
+                                  onMasteryUpdated: _loadMasteries,
+                                ),
+                              );
+                              _loadMasteries();
+                            },
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isGraduated ? const Color(0xFFFEF3C7) : masteryColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isGraduated ? const Color(0xFFF59E0B) : masteryColor.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isGraduated)
+                                    const Text('🎓', style: TextStyle(fontSize: 10))
+                                  else
+                                    Icon(Icons.psychology, size: 12, color: masteryColor),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    isGraduated ? 'Mastered $score%' : '$score%',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: isGraduated ? const Color(0xFF065F46) : masteryColor,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

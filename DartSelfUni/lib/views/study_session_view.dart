@@ -53,8 +53,7 @@ class _StudySessionViewState extends State<StudySessionView> {
       if (widget.isRelearning) {
         _dueCards = List.from(widget.deck!.cards);
       } else {
-        final now = DateTime.now().millisecondsSinceEpoch;
-        _dueCards = widget.deck!.cards.where((c) => c.nextReview <= now).toList();
+        _dueCards = widget.deck!.cards.where((c) => c.isDue).toList();
         _dueCards.sort((a, b) => a.nextReview.compareTo(b.nextReview));
       }
     } else {
@@ -124,6 +123,16 @@ class _StudySessionViewState extends State<StudySessionView> {
 
     final currentCard = _dueCards[_currentIndex];
     final updatedCard = SRSEngine.calculateNextReview(currentCard, grade);
+
+    if (!currentCard.isGraduated && updatedCard.isGraduated && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎓 Card Graduated to Mastered! (Immune to decay)'),
+          backgroundColor: Color(0xFF059669),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
 
     // Update in provider and sync to local storage
     final resolvedDeckId = widget.deck?.id ?? (widget.deckId != 'universal' && widget.deckId != 'custom' ? widget.deckId : null) ?? currentCard.deckId;
@@ -205,6 +214,28 @@ class _StudySessionViewState extends State<StudySessionView> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                 ),
+                () {
+                  final totalSessionCards = widget.customSessionCards ?? widget.deck?.cards ?? [];
+                  final masteredCount = totalSessionCards.where((c) => c.isGraduated).length;
+                  if (masteredCount > 0) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                        ),
+                        child: Text(
+                          '🎓 $masteredCount Mastered Cards in this collection',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                        ),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                }(),
                 const SizedBox(height: 28),
                 Wrap(
                   spacing: 12,
@@ -318,6 +349,45 @@ class _StudySessionViewState extends State<StudySessionView> {
                               Row(
                                 children: [
                                   ArchetypeBadge(type: currentCard.type),
+                                  const SizedBox(width: 8),
+                                  if (currentCard.isGraduated)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFEF3C7),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: const Color(0xFFF59E0B)),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text('🎓', style: TextStyle(fontSize: 10)),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'MASTERED',
+                                            style: TextStyle(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFFB45309),
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  else
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      child: Text(
+                                        '${currentCard.consecutiveCorrect}/2 to Master',
+                                        style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                                      ),
+                                    ),
                                   const Spacer(),
                                   if (currentCard.sourceUrl != null && currentCard.sourceUrl!.isNotEmpty) ...[
                                     ActionChip(

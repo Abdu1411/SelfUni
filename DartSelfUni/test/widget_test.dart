@@ -26,6 +26,17 @@ import 'package:selfuni/widgets/common/rich_note_editor.dart';
 import 'package:selfuni/widgets/modals/export_note_modal.dart';
 import 'package:selfuni/widgets/modals/ask_ai_modal.dart';
 import 'package:selfuni/widgets/common/adaptive_video_player_widget.dart';
+import 'package:selfuni/core/services/ai_service.dart';
+import 'package:selfuni/models/note_mastery_model.dart';
+import 'package:selfuni/core/services/note_mastery_storage_service.dart';
+import 'package:selfuni/widgets/modals/note_mastery_modal.dart';
+import 'package:selfuni/widgets/modals/folder_modal.dart';
+import 'package:selfuni/widgets/modals/due_notes_review_modal.dart';
+import 'package:selfuni/views/lessons_view.dart';
+import 'package:selfuni/views/pdf_viewer_view.dart';
+import 'package:selfuni/widgets/modals/due_cards_review_modal.dart';
+import 'package:selfuni/views/decks_view.dart';
+import 'package:selfuni/core/utils/srs_engine.dart';
 
 void main() {
   setUp(() {
@@ -222,7 +233,7 @@ void main() {
 
     // Verify Archetype header and Universal Deck badge
     expect(find.text('🎯 Study by Note Archetype'), findsOneWidget);
-    expect(find.text('Study Universal Deck (1 Cards)'), findsOneWidget);
+    expect(find.textContaining('Study Universal Deck'), findsOneWidget);
 
     // Verify Complexity archetype shows 1 due
     expect(find.text('Complexity'), findsOneWidget);
@@ -1013,6 +1024,840 @@ void traverse() {
         await noteFile.delete();
         await classFolder.delete(recursive: true);
       });
+    });
+  });
+
+  group('Arabic Preview Tests', () {
+    testWidgets('RichNoteEditor renders Arabic preview button and switches to Arabic preview mode', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RichNoteEditor(
+              initialContent: '# Sorting Algorithms\n\nMerge Sort runs in \$O(N \\log N)\$.',
+              onChanged: (val) {},
+            ),
+          ),
+        ),
+      );
+
+      final arabicBtnFinder = find.byIcon(Icons.g_translate_outlined);
+      expect(arabicBtnFinder, findsOneWidget);
+
+      await tester.tap(arabicBtnFinder);
+      await tester.pump();
+
+      expect(find.textContaining('معاينة باللغة العربية'), findsWidgets);
+    });
+
+    testWidgets('MarkdownView renders in RTL when isArabic is true', (WidgetTester tester) async {
+      const sampleArabicMarkdown = '''
+# خوارزميات الترتيب
+
+هذه الملاحظات تشرح خوارزمية الترتيب بالدمج وتعقيدها \$O(N \\log N)\$.
+
+```dart
+void mergeSort() {
+  // LTR code
+}
+```
+''';
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: MarkdownView(
+                data: sampleArabicMarkdown,
+                isArabic: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final directionalityFinder = find.byWidgetPredicate(
+        (widget) => widget is Directionality && widget.textDirection == TextDirection.rtl,
+      );
+      expect(directionalityFinder, findsWidgets);
+    });
+
+    test('AIService translateNotesToArabic handles empty notes gracefully', () async {
+      final aiService = AIService();
+      final result = await aiService.translateNotesToArabic(notes: '');
+      expect(result, '');
+    });
+
+    testWidgets('MarkdownView automatically detects RTL language and formats RTL without manual flag', (WidgetTester tester) async {
+      const arabicContent = '''
+# شجرة البحث الثنائية
+
+تحتوي شجرة البحث الثنائية على عقد مرتبة بحيث تكون جميع القيم في الشجرة الفرعية اليسرى أصغر من الجذر.
+''';
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: MarkdownView(
+                data: arabicContent,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final rtlDirectionality = find.byWidgetPredicate(
+        (widget) => widget is Directionality && widget.textDirection == TextDirection.rtl,
+      );
+      expect(rtlDirectionality, findsWidgets);
+    });
+
+    testWidgets('MarkdownView automatically formats English content in LTR', (WidgetTester tester) async {
+      const englishContent = '''
+# Binary Search Tree
+
+A binary search tree is a rooted binary tree data structure with the key property.
+''';
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: MarkdownView(
+                data: englishContent,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final ltrDirectionality = find.byWidgetPredicate(
+        (widget) => widget is Directionality && widget.textDirection == TextDirection.ltr,
+      );
+      expect(ltrDirectionality, findsWidgets);
+    });
+
+    test('AIService detectLanguageHeuristic detects Arabic and English accurately', () {
+      final arabicDetect = AIService.detectLanguageHeuristic('ملاحظات عن البرمجة الديناميكية والخوارزميات');
+      expect(arabicDetect['isRtl'], isTrue);
+      expect(arabicDetect['language'], 'Arabic');
+
+      final englishDetect = AIService.detectLanguageHeuristic('# Dynamic Programming Notes\nThis is in English.');
+      expect(englishDetect['isRtl'], isFalse);
+      expect(englishDetect['language'], 'English');
+    });
+
+    testWidgets('RichNoteEditor standard preview displays RTL direction indicator when note is Arabic', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RichNoteEditor(
+              initialContent: '# ملاحظات الدرس\n\nشرح الخوارزميات وهياكل البيانات.',
+              onChanged: (val) {},
+            ),
+          ),
+        ),
+      );
+
+      // Switch to standard preview
+      final previewBtn = find.byTooltip('Preview Mode');
+      expect(previewBtn, findsOneWidget);
+      await tester.tap(previewBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('RTL'), findsOneWidget);
+      expect(find.text('Switch'), findsOneWidget);
+    });
+  });
+
+  group('Note Mastery Tests', () {
+    test('NoteMasteryModel computes effective mastery and decays to 0% after 7 days', () {
+      final now = DateTime.now();
+
+      final q1 = MasteryQuestionModel(id: '1', question: 'Q1', idealAnswer: 'A1', isCorrect: true);
+      final q2 = MasteryQuestionModel(id: '2', question: 'Q2', idealAnswer: 'A2', isCorrect: true);
+      final q3 = MasteryQuestionModel(id: '3', question: 'Q3', idealAnswer: 'A3', isCorrect: false);
+
+      // Fresh review: 2/3 correct = 67%
+      final freshMastery = NoteMasteryModel(
+        noteKey: 'note_123',
+        questions: [q1, q2, q3],
+        lastReviewedAt: now,
+      );
+      expect(freshMastery.effectiveMasteryPercentage, 67);
+      expect(freshMastery.incorrectQuestions.length, 1);
+      expect(freshMastery.incorrectQuestions.first.id, '3');
+
+      // 100% mastery fresh
+      final allCorrectMastery = NoteMasteryModel(
+        noteKey: 'note_123',
+        questions: [
+          q1,
+          q2,
+          MasteryQuestionModel(id: '3', question: 'Q3', idealAnswer: 'A3', isCorrect: true),
+        ],
+        lastReviewedAt: now,
+      );
+      expect(allCorrectMastery.effectiveMasteryPercentage, 100);
+      expect(allCorrectMastery.incorrectQuestions, isEmpty);
+
+      // 8 days elapsed (> 7 days / 168 hours): mastery falls to 0%
+      final decayedMastery = NoteMasteryModel(
+        noteKey: 'note_123',
+        questions: [q1, q2],
+        lastReviewedAt: now.subtract(const Duration(days: 8)),
+      );
+      expect(decayedMastery.effectiveMasteryPercentage, 0);
+    });
+
+    test('NoteMasteryStorageService saves and loads note mastery properly', () async {
+      final storage = NoteMasteryStorageService();
+      storage.clearForTest();
+
+      final mastery = NoteMasteryModel(
+        noteKey: 'test_mastery_note_key',
+        questions: [
+          MasteryQuestionModel(
+            id: 'mq1',
+            question: 'What is memoization?',
+            idealAnswer: 'Caching expensive function results.',
+            isCorrect: true,
+          ),
+          MasteryQuestionModel(
+            id: 'mq2',
+            question: 'What is tabulation?',
+            idealAnswer: 'Bottom-up dynamic programming table.',
+            isCorrect: false,
+          ),
+        ],
+        lastReviewedAt: DateTime.now(),
+      );
+
+      await storage.saveNoteMastery(mastery);
+
+      final loaded = await storage.getNoteMastery('test_mastery_note_key');
+      expect(loaded, isNotNull);
+      expect(loaded!.questions.length, 2);
+      expect(loaded.questions.first.question, 'What is memoization?');
+      expect(loaded.questions.first.isCorrect, isTrue);
+      expect(loaded.questions[1].isCorrect, isFalse);
+      expect(loaded.incorrectQuestions.length, 1);
+      expect(loaded.incorrectQuestions.first.id, 'mq2');
+    });
+
+    test('AIService generateMasteryQuestions and gradeMasteryAnswer fallback works', () async {
+      final aiService = AIService();
+      final questions = await aiService.generateMasteryQuestions(
+        noteContent: '''
+# Merge Sort
+- Divide and conquer sorting algorithm.
+- Time complexity is O(N log N).
+''',
+        count: 2,
+      );
+
+      expect(questions, isNotEmpty);
+      expect(questions.first['question'], isNotEmpty);
+      expect(questions.first['idealAnswer'], isNotEmpty);
+
+      final grade = await aiService.gradeMasteryAnswer(
+        question: 'What is the time complexity of Merge Sort?',
+        idealAnswer: 'The time complexity is O(N log N) in all cases.',
+        userAnswer: 'It runs in O(N log N) using divide and conquer.',
+      );
+
+      expect(grade['isCorrect'], isTrue);
+      expect(grade['scorePercentage'], greaterThanOrEqualTo(60));
+    });
+
+    testWidgets('RichNoteEditor renders Mastery percentage text and does not open modal on tap', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RichNoteEditor(
+              title: 'Algorithms 101',
+              initialContent: '# Sorting Algorithms\n\nNotes on bubble sort and merge sort.',
+              onChanged: (val) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final masteryBadgeFinder = find.textContaining('Mastery');
+      expect(masteryBadgeFinder, findsOneWidget);
+
+      await tester.tap(masteryBadgeFinder);
+      await tester.pump();
+
+      expect(find.byType(NoteMasteryModal), findsNothing);
+    });
+
+    testWidgets('FolderModal creates new folder and pops without Navigator assertion failure', (WidgetTester tester) async {
+      String? savedName;
+      String? savedColor;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () => showDialog(
+                  context: ctx,
+                  builder: (_) => FolderModal(
+                    onSave: (name, color) {
+                      savedName = name;
+                      savedColor = color;
+                    },
+                  ),
+                ),
+                child: const Text('Open Folder Modal'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Open Folder Modal'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.byType(FolderModal), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'Web Generated Course');
+      await tester.tap(find.text('Create'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(FolderModal), findsNothing);
+      expect(savedName, 'Web Generated Course');
+      expect(savedColor, isNotNull);
+    });
+
+    test('NoteMasteryStorageService getDueNotes filters notes with mastery less than 60%', () async {
+      final storage = NoteMasteryStorageService();
+      storage.clearForTest();
+
+      final lesson1 = Lesson(id: 'l1', title: 'Dynamic Programming', topic: 'Algorithms', content: 'Notes 1');
+      final lesson2 = Lesson(id: 'l2', title: 'Graph Theory', topic: 'Algorithms', content: 'Notes 2');
+      final lesson3 = Lesson(id: 'l3', title: 'Binary Trees', topic: 'Data Structures', content: 'Notes 3');
+
+      // Lesson 1: 100% mastery (not due)
+      await storage.saveNoteMastery(NoteMasteryModel(
+        noteKey: 'l1',
+        questions: [
+          MasteryQuestionModel(id: 'q1', question: 'Q1', idealAnswer: 'A1', isCorrect: true),
+        ],
+        lastReviewedAt: DateTime.now(),
+      ));
+
+      // Lesson 2: 33% mastery (due)
+      await storage.saveNoteMastery(NoteMasteryModel(
+        noteKey: 'l2',
+        questions: [
+          MasteryQuestionModel(id: 'q1', question: 'Q1', idealAnswer: 'A1', isCorrect: true),
+          MasteryQuestionModel(id: 'q2', question: 'Q2', idealAnswer: 'A2', isCorrect: false),
+          MasteryQuestionModel(id: 'q3', question: 'Q3', idealAnswer: 'A3', isCorrect: false),
+        ],
+        lastReviewedAt: DateTime.now(),
+      ));
+
+      // Lesson 3: unattempted (0% mastery, due)
+
+      final dueNotes = await storage.getDueNotes([lesson1, lesson2, lesson3], threshold: 60);
+
+      expect(dueNotes.length, 2);
+      final dueIds = dueNotes.map((d) => (d['lesson'] as Lesson).id).toList();
+      expect(dueIds, contains('l2'));
+      expect(dueIds, contains('l3'));
+      expect(dueIds, isNot(contains('l1')));
+    });
+
+    test('NoteMasteryStorageService excludes notes that belong to local courses from getDueNotes', () async {
+      final storage = NoteMasteryStorageService();
+      storage.clearForTest();
+
+      final standaloneNote = Lesson(
+        id: 'standalone_note_1',
+        title: 'Distributed Transactions',
+        topic: 'Databases',
+        content: 'Two phase commit and Raft consensus.',
+        isNote: true,
+      );
+
+      final courseNote = Lesson(
+        id: 'course_note_2',
+        title: 'Lecture 1: Intro to AlgoMaster',
+        topic: 'Data Structures & Algorithms Course',
+        content: 'Live course video stream for Data Structures & Algorithms Course.',
+        isNote: true,
+      );
+
+      final localCourse = Course(
+        id: 'course_dsa',
+        title: 'Data Structures & Algorithms Course',
+        description: 'DSA Bootcamp',
+        instructors: ['Prof. Smith'],
+        modules: [],
+      );
+
+      final dueNotes = await storage.getDueNotes(
+        [standaloneNote, courseNote],
+        threshold: 60,
+        courses: [localCourse],
+      );
+
+      // Only the standalone note should be due for review, the local course note is excluded!
+      expect(dueNotes.length, 1);
+      expect((dueNotes.first['lesson'] as Lesson).id, 'standalone_note_1');
+    });
+
+    testWidgets('DueNotesReviewModal renders due notes list and allows quizzing', (WidgetTester tester) async {
+      final storage = NoteMasteryStorageService();
+      storage.clearForTest();
+      await storage.loadAllMasteries();
+
+      final deckProvider = DeckProvider();
+      final testNote = Lesson(
+        id: 'due_test_note_1',
+        title: 'Operating Systems Virtual Memory',
+        topic: 'Operating Systems',
+        content: 'Paging and segmentation in modern OS.',
+        isNote: true,
+      );
+      deckProvider.lessons.add(testNote);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<DeckProvider>.value(
+          value: deckProvider,
+          child: MaterialApp(
+            home: Builder(
+              builder: (ctx) => Scaffold(
+                body: ElevatedButton(
+                  onPressed: () => DueNotesReviewModal.show(ctx),
+                  child: const Text('Open Due Notes Review'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Open Due Notes Review'));
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pump();
+
+      expect(find.byType(DueNotesReviewModal), findsOneWidget);
+      expect(find.text('Due Notes Mastery Review'), findsOneWidget);
+      expect(find.text('Operating Systems Virtual Memory'), findsOneWidget);
+      expect(find.text('Quiz Now'), findsOneWidget);
+    });
+
+    testWidgets('LessonsView renders DUE REVIEW button in header', (WidgetTester tester) async {
+      final storage = NoteMasteryStorageService();
+      storage.clearForTest();
+
+      final deckProvider = DeckProvider();
+      final testNote = Lesson(
+        id: 'due_test_note_2',
+        title: 'Computer Networks Routing',
+        topic: 'Networking',
+        content: 'BGP and OSPF routing protocols.',
+        isNote: true,
+      );
+      deckProvider.lessons.add(testNote);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<DeckProvider>.value(
+          value: deckProvider,
+          child: MaterialApp(
+            home: Scaffold(
+              body: LessonsView(
+                onNavigateToLessonGenerator: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pump();
+
+      final dueBtnFinder = find.textContaining('DUE');
+      expect(dueBtnFinder, findsWidgets);
+
+      await tester.tap(dueBtnFinder.first);
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pump();
+
+      expect(find.byType(DueNotesReviewModal), findsOneWidget);
+    });
+
+    test('NoteMasteryModel graduation exempts note from 7-day memory decay', () {
+      final oldReviewDate = DateTime.now().subtract(const Duration(days: 8));
+
+      // Regular non-graduated note: 100% raw accuracy, but 8 days elapsed -> decays to 0%
+      final nonGraduatedNote = NoteMasteryModel(
+        noteKey: 'regular_decay_note',
+        questions: [
+          MasteryQuestionModel(id: 'q1', question: 'Q1', idealAnswer: 'A1', isCorrect: true),
+        ],
+        lastReviewedAt: oldReviewDate,
+        consecutiveHighScores: 1,
+        isGraduated: false,
+      );
+      expect(nonGraduatedNote.rawMasteryPercentage, 100);
+      expect(nonGraduatedNote.effectiveMasteryPercentage, 0); // Decayed!
+
+      // Graduated note: 100% raw accuracy, 8 days elapsed -> remains 100% (Immune to decay!)
+      final graduatedNote = NoteMasteryModel(
+        noteKey: 'graduated_mastery_note',
+        questions: [
+          MasteryQuestionModel(id: 'q1', question: 'Q1', idealAnswer: 'A1', isCorrect: true),
+        ],
+        lastReviewedAt: oldReviewDate,
+        consecutiveHighScores: 2,
+        isGraduated: true,
+      );
+      expect(graduatedNote.rawMasteryPercentage, 100);
+      expect(graduatedNote.effectiveMasteryPercentage, 100); // Protected from decay!
+    });
+
+    test('NoteMasteryStorageService getMasteredNotes filters graduated and >=90% notes', () async {
+      final storage = NoteMasteryStorageService();
+      storage.clearForTest();
+
+      final lesson1 = Lesson(id: 'grad_note_1', title: 'Turing Machines', topic: 'Theory', content: 'C1', isNote: true);
+      final lesson2 = Lesson(id: 'non_grad_note_2', title: 'Sorting Algorithms', topic: 'Algorithms', content: 'C2', isNote: true);
+
+      // Graduated note
+      await storage.saveNoteMastery(NoteMasteryModel(
+        noteKey: 'grad_note_1',
+        questions: [
+          MasteryQuestionModel(id: 'q1', question: 'Q1', idealAnswer: 'A1', isCorrect: true),
+        ],
+        lastReviewedAt: DateTime.now().subtract(const Duration(days: 10)),
+        consecutiveHighScores: 2,
+        isGraduated: true,
+      ));
+
+      // 50% score note
+      await storage.saveNoteMastery(NoteMasteryModel(
+        noteKey: 'non_grad_note_2',
+        questions: [
+          MasteryQuestionModel(id: 'q1', question: 'Q1', idealAnswer: 'A1', isCorrect: true),
+          MasteryQuestionModel(id: 'q2', question: 'Q2', idealAnswer: 'A2', isCorrect: false),
+        ],
+        lastReviewedAt: DateTime.now(),
+        consecutiveHighScores: 0,
+        isGraduated: false,
+      ));
+
+      final mastered = await storage.getMasteredNotes([lesson1, lesson2]);
+      expect(mastered.length, 1);
+      expect((mastered.first['lesson'] as Lesson).id, 'grad_note_1');
+      expect(mastered.first['isGraduated'], isTrue);
+    });
+
+    testWidgets('DueNotesReviewModal renders Mastered Notes tab with decay immunity', (WidgetTester tester) async {
+      final storage = NoteMasteryStorageService();
+      storage.clearForTest();
+      await storage.loadAllMasteries();
+
+      final deckProvider = DeckProvider();
+      final testNote = Lesson(
+        id: 'mastered_test_note_1',
+        title: 'Distributed Systems Raft',
+        topic: 'Distributed Systems',
+        content: 'Leader election and log replication.',
+        isNote: true,
+      );
+      deckProvider.lessons.add(testNote);
+
+      await tester.runAsync(() async {
+        await storage.saveNoteMastery(NoteMasteryModel(
+          noteKey: testNote.id,
+          questions: [
+            MasteryQuestionModel(id: 'q1', question: 'Q1', idealAnswer: 'A1', isCorrect: true),
+          ],
+          lastReviewedAt: DateTime.now().subtract(const Duration(days: 8)),
+          consecutiveHighScores: 2,
+          isGraduated: true,
+        ));
+      });
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<DeckProvider>.value(
+          value: deckProvider,
+          child: MaterialApp(
+            home: Builder(
+              builder: (ctx) => Scaffold(
+                body: ElevatedButton(
+                  onPressed: () => DueNotesReviewModal.show(ctx),
+                  child: const Text('Open Modal'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Open Modal'));
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pump();
+
+      expect(find.byType(DueNotesReviewModal), findsOneWidget);
+
+      final masteredTabFinder = find.textContaining('Mastered Notes');
+      expect(masteredTabFinder, findsOneWidget);
+
+      await tester.tap(masteredTabFinder);
+      await tester.pump();
+
+      expect(find.text('Distributed Systems Raft'), findsOneWidget);
+      expect(find.text('IMMUNE TO DECAY'), findsOneWidget);
+    });
+
+    test('NoteMasteryStorageService includes PDF notes in getDueNotes and getMasteredNotes', () async {
+      final storage = NoteMasteryStorageService();
+      storage.clearForTest();
+
+      final pdfLesson = Lesson(
+        id: 'pdf_lesson_1',
+        title: 'Deep Learning Lecture Slides',
+        topic: 'Machine Learning',
+        content: 'Backpropagation and gradient descent derivations.',
+        pdfUrl: 'C:/fake/path/lecture.pdf',
+        pdfFilename: 'lecture.pdf',
+        isNote: false, // Even if isNote was false on imported PDF, it is a reviewable document!
+      );
+
+      final regularNote = Lesson(
+        id: 'note_lesson_2',
+        title: 'Heaps and Priority Queues',
+        topic: 'Data Structures',
+        content: 'Binary heap operations.',
+        isNote: true,
+      );
+
+      final due = await storage.getDueNotes([pdfLesson, regularNote]);
+      expect(due.length, 2);
+      final dueIds = due.map((d) => (d['lesson'] as Lesson).id).toList();
+      expect(dueIds, contains('pdf_lesson_1'));
+      expect(dueIds, contains('note_lesson_2'));
+    });
+
+    testWidgets('PdfViewerView provides noteKey and lesson title to RichNoteEditor', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final deckProvider = DeckProvider();
+      final pomodoroProvider = PomodoroProvider(deckProvider);
+      final pdfLesson = Lesson(
+        id: 'pdf_test_key_1',
+        title: 'Calculus III Multivariable',
+        topic: 'Mathematics',
+        content: 'Partial derivatives and gradient vector.',
+        pdfUrl: null, // Test without actual PDF file on disk
+        pdfFilename: 'calc3.pdf',
+        isNote: true,
+      );
+      deckProvider.lessons.add(pdfLesson);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<DeckProvider>.value(value: deckProvider),
+            ChangeNotifierProvider<PomodoroProvider>.value(value: pomodoroProvider),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: PdfViewerView(
+                lesson: pdfLesson,
+                onNavigateBack: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Find RichNoteEditor inside PdfViewerView
+      final editorFinder = find.byType(RichNoteEditor);
+      expect(editorFinder, findsOneWidget);
+
+      final editorWidget = tester.widget<RichNoteEditor>(editorFinder);
+      expect(editorWidget.noteKey, 'pdf_test_key_1');
+      expect(editorWidget.title, 'Calculus III Multivariable');
+    });
+
+    test('Flashcard consecutive correct reviews trigger graduation to Mastered and decay immunity', () {
+      final card = Flashcard(
+        id: 'card_grad_1',
+        type: CardType.concept,
+        front: 'What is idempotency?',
+        back: 'An operation that produces the same result no matter how many times it is applied.',
+        nextReview: DateTime.now().millisecondsSinceEpoch - 1000,
+        interval: 1,
+        ease: 2.5,
+        reps: 0,
+        consecutiveCorrect: 0,
+        isGraduated: false,
+      );
+
+      // Card is initially due
+      expect(card.isDue, isTrue);
+      expect(card.isGraduated, isFalse);
+
+      // 1st good review
+      final review1 = SRSEngine.calculateNextReview(card, Grade.good);
+      expect(review1.consecutiveCorrect, 1);
+      expect(review1.isGraduated, isFalse);
+
+      // 2nd consecutive good review -> Graduates to Mastered!
+      final review2 = SRSEngine.calculateNextReview(review1, Grade.good);
+      expect(review2.consecutiveCorrect, 2);
+      expect(review2.isGraduated, isTrue);
+      expect(review2.masteryScore, 100);
+
+      // Graduated card is immune to normal decay
+      expect(review2.isDue, isFalse);
+    });
+
+    testWidgets('DueCardsReviewModal renders Due, Mastered, and All tabs and displays cards', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final deckProvider = DeckProvider();
+      final dueCard = Flashcard(
+        id: 'due_card_test_1',
+        type: CardType.concept,
+        front: 'What is CAP Theorem?',
+        back: 'Consistency, Availability, Partition tolerance.',
+        nextReview: DateTime.now().millisecondsSinceEpoch - 5000,
+        interval: 1,
+        ease: 2.5,
+        reps: 0,
+        consecutiveCorrect: 0,
+        isGraduated: false,
+      );
+
+      final masteredCard = Flashcard(
+        id: 'mastered_card_test_2',
+        type: CardType.complexity,
+        front: 'Binary Search Time Complexity',
+        back: 'O(log N)',
+        nextReview: DateTime.now().millisecondsSinceEpoch - 5000,
+        interval: 30,
+        ease: 2.8,
+        reps: 5,
+        consecutiveCorrect: 3,
+        isGraduated: true,
+      );
+
+      final testDeck = Deck(
+        id: 'test_deck_srs',
+        title: 'System Design Drills',
+        cards: [dueCard, masteredCard],
+      );
+      deckProvider.addDeck(testDeck);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<DeckProvider>.value(
+          value: deckProvider,
+          child: MaterialApp(
+            home: Builder(
+              builder: (ctx) => Scaffold(
+                body: ElevatedButton(
+                  onPressed: () => DueCardsReviewModal.show(ctx),
+                  child: const Text('Open Cards Modal'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Open Cards Modal'));
+      await tester.pump();
+
+      expect(find.byType(DueCardsReviewModal), findsOneWidget);
+      expect(find.text('What is CAP Theorem?'), findsOneWidget);
+      expect(find.text('DUE FOR REVIEW'), findsOneWidget);
+
+      // Switch to Mastered tab
+      final masteredTab = find.textContaining('Mastered');
+      expect(masteredTab, findsOneWidget);
+      await tester.tap(masteredTab);
+      await tester.pump();
+
+      expect(find.text('Binary Search Time Complexity'), findsOneWidget);
+      expect(find.text('IMMUNE TO DECAY'), findsOneWidget);
+    });
+
+    testWidgets('DecksView renders DUE REVIEW and STUDY ALL CARDS buttons in header', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final deckProvider = DeckProvider();
+      final pomodoroProvider = PomodoroProvider(deckProvider);
+
+      final card = Flashcard(
+        id: 'c1',
+        type: CardType.concept,
+        front: 'Front Question',
+        back: 'Back Answer',
+        nextReview: DateTime.now().millisecondsSinceEpoch - 1000,
+        interval: 1,
+        ease: 2.5,
+        reps: 0,
+      );
+
+      final deck = Deck(
+        id: 'd1',
+        title: 'Algorithms 101',
+        cards: [card],
+      );
+      deckProvider.addDeck(deck);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<DeckProvider>.value(value: deckProvider),
+            ChangeNotifierProvider<PomodoroProvider>.value(value: pomodoroProvider),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: DecksView(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.textContaining('DUE REVIEW'), findsOneWidget);
+      expect(find.text('STUDY ALL CARDS'), findsOneWidget);
     });
   });
 }

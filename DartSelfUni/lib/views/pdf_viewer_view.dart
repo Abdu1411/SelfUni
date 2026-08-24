@@ -329,11 +329,14 @@ class _PdfViewerViewState extends State<PdfViewerView> {
             flex: 5,
             child: RichNoteEditor(
               key: ValueKey('pdf_notes_${_activeLesson.id}'),
+              noteKey: _activeLesson.id,
               initialContent: _currentContent,
               onChanged: (val) {
                 _currentContent = val;
+                _activeLesson.content = val;
+                context.read<DeckProvider>().updateLesson(_activeLesson);
               },
-              title: 'PDF Notes',
+              title: _activeLesson.title,
               onSave: _saveNotes,
               showTimestamp: false,
             ),

@@ -10,6 +10,7 @@ import '../widgets/modals/rename_deck_modal.dart';
 import '../widgets/modals/move_resource_modal.dart';
 import '../widgets/modals/deck_cards_modal.dart';
 import '../widgets/modals/folder_modal.dart';
+import '../widgets/modals/due_cards_review_modal.dart';
 import 'study_session_view.dart';
 import 'pdf_viewer_view.dart';
 import 'lesson_detail_view.dart';
@@ -358,54 +359,63 @@ class _DecksViewState extends State<DecksView> {
                   ],
                 ),
               ),
-              if (!isMobile)
-                if (selectedFolder != null) ...[
-                  () {
-                    final Folder folder = selectedFolder!;
-                    return Row(
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            final allDecks = context.read<DeckProvider>().decks;
-                            final folderDecks = allDecks.where((d) => d.id != 'universal' && d.folderId == folder.id).toList();
-                            final allCards = folderDecks.expand((d) => d.cards).toList();
-                            if (allCards.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('No flashcards found in folder "${folder.name}".')),
-                              );
-                              return;
-                            }
-                            final shuffledCards = List<Flashcard>.from(allCards)..shuffle();
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => StudySessionView(
-                                  customSessionCards: shuffledCards,
-                                  title: 'Shuffled - ${folder.name}',
-                                  deckId: folder.id,
-                                ),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.shuffle, size: 16),
-                          label: const Text('Shuffle & Study', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF3B82F6),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            elevation: 0,
-                          ),
+              if (!isMobile) ...[
+                () {
+                  final allDecks = context.read<DeckProvider>().decks;
+                  final allCards = selectedFolder != null
+                      ? allDecks.where((d) => d.folderId == selectedFolder!.id).expand((d) => d.cards).toList()
+                      : (context.read<DeckProvider>().universalDeck?.cards ?? allDecks.expand((d) => d.cards).toList());
+                  final dueCount = allCards.where((c) => c.isDue).length;
+
+                  return Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => DueCardsReviewModal.show(
+                          context,
+                          folderId: selectedFolder?.id,
+                          onReviewCompleted: () => setState(() {}),
                         ),
-                        const SizedBox(width: 8),
+                        icon: const Icon(Icons.psychology, size: 18),
+                        label: Text(
+                          dueCount > 0 ? 'DUE REVIEW ($dueCount)' : 'DUE REVIEW',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: dueCount > 0 ? const Color(0xFFE11D48) : const Color(0xFF059669),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => DueCardsReviewModal.show(
+                          context,
+                          folderId: selectedFolder?.id,
+                          onReviewCompleted: () => setState(() {}),
+                        ),
+                        icon: const Icon(Icons.style, size: 16),
+                        label: const Text('STUDY ALL CARDS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF2563EB),
+                          side: const BorderSide(color: Color(0xFFBFDBFE)),
+                          backgroundColor: const Color(0xFFEFF6FF),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (selectedFolder != null) ...[
                         OutlinedButton.icon(
                           onPressed: () {
                             showDialog(
                               context: context,
                               builder: (context) => FolderModal(
-                                initialName: folder.name,
-                                initialColor: folder.color,
+                                initialName: selectedFolder!.name,
+                                initialColor: selectedFolder.color,
                                 onSave: (name, color) {
-                                  context.read<DeckProvider>().updateFolder(folder.id, name, color: color);
+                                  context.read<DeckProvider>().updateFolder(selectedFolder!.id, name, color: color);
                                 },
                               ),
                             );
@@ -416,43 +426,41 @@ class _DecksViewState extends State<DecksView> {
                             foregroundColor: const Color(0xFF64748B),
                             side: const BorderSide(color: Color(0xFFCBD5E1)),
                             backgroundColor: const Color(0xFFF8FAFC),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                         const SizedBox(width: 8),
                         OutlinedButton.icon(
-                          onPressed: () => _confirmDeleteFolder(context, folder.id, folder.name),
+                          onPressed: () => _confirmDeleteFolder(context, selectedFolder!.id, selectedFolder.name),
                           icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
-                          label: const Text('Delete Folder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.error)),
+                          label: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.error)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.error,
                             side: const BorderSide(color: Color(0xFFFECDD3)),
                             backgroundColor: const Color(0xFFFFF1F2),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ] else ...[
+                        OutlinedButton.icon(
+                          onPressed: () => _openNewFolderModal(context),
+                          icon: const Icon(Icons.create_new_folder_outlined, size: 16),
+                          label: const Text('New Folder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF3B82F6),
+                            side: const BorderSide(color: Color(0xFFBFDBFE)),
+                            backgroundColor: const Color(0xFFEFF6FF),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                       ],
-                    );
-                  }(),
-                ] else
-                  Row(
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () => _openNewFolderModal(context),
-                        icon: const Icon(Icons.create_new_folder_outlined, size: 16),
-                        label: const Text('New Folder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF3B82F6),
-                          side: const BorderSide(color: Color(0xFFBFDBFE)),
-                          backgroundColor: const Color(0xFFEFF6FF),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
                     ],
-                  ),
+                  );
+                }(),
+              ],
             ],
           ),
           if (isMobile) ...[
@@ -868,7 +876,7 @@ class _DecksViewState extends State<DecksView> {
         maxCrossAxisExtent: 380,
         crossAxisSpacing: 24,
         mainAxisSpacing: 24,
-        mainAxisExtent: 220,
+        mainAxisExtent: 236,
       ),
       itemCount: decks.length,
       itemBuilder: (context, index) {
@@ -878,9 +886,10 @@ class _DecksViewState extends State<DecksView> {
   }
 
   Widget _buildDeckCard(BuildContext context, Deck deck, bool isMobile) {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final dueCards = deck.cards.where((c) => c.nextReview <= now).length;
-    final totalCards = deck.cards.length;
+    final dueCards = deck.dueCardsCount;
+    final totalCards = deck.totalCardsCount;
+    final masteredCards = deck.masteredCardsCount;
+    final masteryRate = deck.masteryRate;
 
     return Container(
       decoration: BoxDecoration(
@@ -1034,15 +1043,10 @@ class _DecksViewState extends State<DecksView> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
-                () {
-                  final int masteryRate = totalCards > 0
-                      ? ((deck.cards.where((c) => c.interval > 1).length / totalCards) * 100).round()
-                      : 0;
-                  return Text(
-                    '$totalCards Cards • $masteryRate% Mastered',
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                  );
-                }(),
+                Text(
+                  '$totalCards Cards • $masteryRate% Mastered • $masteredCards 🎓',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                ),
               ],
             ),
           ),

@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/deck_provider.dart';
 import '../../models/card_model.dart';
+import '../widgets/modals/due_notes_review_modal.dart';
+import '../widgets/modals/due_cards_review_modal.dart';
 import 'study_session_view.dart';
 import '../widgets/charts/dashboard_charts.dart';
 
@@ -26,14 +28,14 @@ class DashboardView extends StatelessWidget {
     
     final decksCount = deckProvider.decks.length;
     final totalCards = deckProvider.decks.fold<int>(0, (sum, deck) => sum + deck.cards.length);
-    final now = DateTime.now().millisecondsSinceEpoch;
     final reviewsDue = deckProvider.decks.fold<int>(0, (sum, deck) {
-      return sum + deck.cards.where((c) => c.nextReview <= now).length;
+      return sum + deck.cards.where((c) => c.isDue).length;
     });
 
     final allUniversalCards = deckProvider.universalDeck?.cards ?? [];
-    final dueUniversalCards = allUniversalCards.where((c) => c.nextReview <= now).toList();
+    final dueUniversalCards = allUniversalCards.where((c) => c.isDue).toList();
     final dueUniversalCount = dueUniversalCards.length;
+    final masteredUniversalCount = allUniversalCards.where((c) => c.isGraduated).length;
 
     void startUniversalStudy() {
       final univDeck = deckProvider.universalDeck;
@@ -47,14 +49,7 @@ class DashboardView extends StatelessWidget {
         return;
       }
 
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => StudySessionView(
-            deck: univDeck,
-            isRelearning: dueUniversalCount == 0,
-          ),
-        ),
-      );
+      DueCardsReviewModal.show(context);
     }
     
     final lessonsCount = deckProvider.lessons.where((l) => l.isNote).length;
@@ -218,7 +213,9 @@ class DashboardView extends StatelessWidget {
                                   const Icon(Icons.school, size: 14, color: AppColors.primary),
                                   const SizedBox(width: 6),
                                   Text(
-                                    'Study Universal Deck ($totalCards Cards)',
+                                    dueUniversalCount > 0
+                                        ? 'Study Universal Deck ($dueUniversalCount Due • $totalCards Cards)'
+                                        : 'Study Universal Deck ($masteredUniversalCount 🎓 Mastered • $totalCards Cards)',
                                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                                   ),
                                   const SizedBox(width: 4),
@@ -250,7 +247,7 @@ class DashboardView extends StatelessWidget {
                   children: [
                     _buildRecentDecksSection(deckProvider),
                     const SizedBox(height: 32),
-                    _buildRecentNotesSection(deckProvider),
+                    _buildRecentNotesSection(context, deckProvider),
                   ],
                 )
               else
@@ -259,7 +256,7 @@ class DashboardView extends StatelessWidget {
                   children: [
                     Expanded(child: _buildRecentDecksSection(deckProvider)),
                     const SizedBox(width: 32),
-                    Expanded(child: _buildRecentNotesSection(deckProvider)),
+                    Expanded(child: _buildRecentNotesSection(context, deckProvider)),
                   ],
                 ),
             ],
@@ -838,7 +835,7 @@ class DashboardView extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentNotesSection(DeckProvider deckProvider) {
+  Widget _buildRecentNotesSection(BuildContext context, DeckProvider deckProvider) {
     final DateFormat formatter = DateFormat('MMM dd');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -853,15 +850,32 @@ class DashboardView extends StatelessWidget {
                 Text('RECENT CS NOTES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E293B), letterSpacing: 0.5)),
               ],
             ),
-            TextButton(
-              onPressed: onNavigateToLessons,
-              child: Row(
-                children: [
-                  Text('All (${deckProvider.lessons.where((l) => l.isNote).length})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.arrow_forward, size: 14, color: Color(0xFF10B981)),
-                ],
-              ),
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => DueNotesReviewModal.show(context),
+                  icon: const Icon(Icons.psychology, size: 14),
+                  label: const Text('Due Notes Review', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFEF2F2),
+                    foregroundColor: const Color(0xFFE11D48),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: onNavigateToLessons,
+                  child: Row(
+                    children: [
+                      Text('All (${deckProvider.lessons.where((l) => l.isNote).length})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward, size: 14, color: Color(0xFF10B981)),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),

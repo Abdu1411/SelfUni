@@ -50,9 +50,8 @@ class Sidebar extends StatelessWidget {
     final pomodoroTime = '$minutes:$seconds';
     
     // Calculate total due globally using the Universal Deck
-    final now = DateTime.now().millisecondsSinceEpoch;
     final universalCards = deckProvider.universalDeck?.cards ?? [];
-    final dueCardsList = universalCards.where((c) => c.nextReview <= now || c.reps == 0).toList();
+    final dueCardsList = universalCards.where((c) => c.isDue).toList();
     dueCardsList.sort((a, b) => a.nextReview.compareTo(b.nextReview));
     final totalDue = dueCardsList.length;
     final totalCards = universalCards.length;

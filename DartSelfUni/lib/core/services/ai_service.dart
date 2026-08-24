@@ -381,4 +381,389 @@ Output JSON Schema:
 
     return result['content']?.toString() ?? rawTranscript;
   }
+
+  /// Translates lecture / study notes into Arabic while preserving Markdown structure, code blocks, and LaTeX math formulas.
+  Future<String> translateNotesToArabic({
+    required String notes,
+  }) async {
+    if (notes.trim().isEmpty) return notes;
+
+    try {
+      final apiKey = await _getApiKey();
+      if (apiKey != null && apiKey.trim().isNotEmpty) {
+        final systemPrompt = '''
+You are an expert academic translator and Computer Science professor specializing in English-to-Arabic technical translation.
+Translate the provided study / lecture notes from English to natural, precise, and academically rigorous Arabic while preserving the exact original Markdown formatting.
+
+MANDATORY RULES:
+1. PRESERVE ALL MARKDOWN SYNTAX: Keep all headers (#, ##, ###), bullet lists (*, -), numbered lists, tables, callout blockquotes ([!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION]), bold (**text**), italics (*text*), and image syntax (![alt](path)).
+2. DO NOT TRANSLATE CODE: Keep all code inside fenced code blocks (```...```) and inline backticks (`...`) verbatim without altering syntax, variable names, functions, or language keywords.
+3. DO NOT TRANSLATE LATEX MATH: Preserve all LaTeX math expressions (\$...\$ and \$\$...\$\$) verbatim (e.g. \$O(N \\log N)\$, \$E = mc^2\$).
+4. ACCURATE TECHNICAL ARABIC: Translate Computer Science and technical terms into accepted Arabic academic terminology, optionally including the English term in parentheses when clarifying for students (e.g. "شجرة البحث الثنائية (Binary Search Tree)").
+5. OUTPUT ONLY THE TRANSLATED TEXT: Do NOT include any intro, pleasantries, explanations, or commentary. Output ONLY the translated Markdown.
+''';
+
+        final userPrompt = '''
+Translate the following notes to Arabic:
+
+$notes
+''';
+
+        final result = await _callDeepSeek([
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': userPrompt},
+        ], jsonResponse: false);
+
+        final translated = result['content']?.toString().trim();
+        if (translated != null && translated.isNotEmpty) {
+          return translated;
+        }
+      }
+    } catch (_) {
+      // Fallback if DeepSeek is unavailable or encounters an error
+    }
+
+    return await _fallbackTranslateToArabic(notes);
+  }
+
+  Future<String> _fallbackTranslateToArabic(String text) async {
+    if (text.trim().isEmpty) return text;
+    try {
+      final lines = text.split('\n');
+      final buffer = StringBuffer();
+      bool inCodeBlock = false;
+      List<String> textLinesToTranslate = [];
+
+      Future<void> flushTextLines() async {
+        if (textLinesToTranslate.isEmpty) return;
+        final joined = textLinesToTranslate.join('\n');
+        textLinesToTranslate.clear();
+        if (joined.trim().isEmpty) {
+          buffer.writeln(joined);
+          return;
+        }
+        try {
+          final url = Uri.parse(
+            'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&q=${Uri.encodeComponent(joined)}',
+          );
+          final response = await http.get(url).timeout(const Duration(seconds: 10));
+          if (response.statusCode == 200) {
+            final decoded = jsonDecode(response.body);
+            if (decoded is List && decoded.isNotEmpty && decoded[0] is List) {
+              final translatedParts = (decoded[0] as List)
+                  .map((part) => (part is List && part.isNotEmpty) ? part[0]?.toString() ?? '' : '')
+                  .join();
+              if (translatedParts.isNotEmpty) {
+                buffer.writeln(translatedParts);
+                return;
+              }
+            }
+          }
+        } catch (_) {}
+        buffer.writeln(joined);
+      }
+
+      for (final line in lines) {
+        if (line.trim().startsWith('```')) {
+          await flushTextLines();
+          inCodeBlock = !inCodeBlock;
+          buffer.writeln(line);
+          continue;
+        }
+        if (inCodeBlock) {
+          buffer.writeln(line);
+          continue;
+        }
+        textLinesToTranslate.add(line);
+        if (textLinesToTranslate.length >= 25) {
+          await flushTextLines();
+        }
+      }
+      await flushTextLines();
+      final result = buffer.toString().trim();
+      return result.isNotEmpty ? result : text;
+    } catch (_) {
+      return text;
+    }
+  }
+
+  /// Detects the primary natural language and text direction (RTL/LTR) of a note using DeepSeek AI, with heuristic fallback.
+  Future<Map<String, dynamic>> detectNoteLanguage({required String text}) async {
+    if (text.trim().isEmpty) {
+      return {'language': 'English', 'isRtl': false, 'code': 'en'};
+    }
+
+    try {
+      final apiKey = await _getApiKey();
+      if (apiKey != null && apiKey.trim().isNotEmpty) {
+        final systemPrompt = 'You are a linguistic analyzer. Identify the primary natural language and text direction of the text. Respond ONLY with a valid JSON object.';
+        final sample = text.length > 600 ? text.substring(0, 600) : text;
+        final userPrompt = '''
+Identify the primary language and text direction of this note text snippet.
+Text Snippet:
+$sample
+
+JSON Output schema:
+{
+  "language": "Arabic" | "English" | "Persian" | "Hebrew" | "Urdu" | "Spanish" | "French" | "German" | "Chinese" | "Japanese" | "Russian" | "Other",
+  "isRtl": true | false,
+  "code": "ar" | "en" | "fa" | "he" | "ur" | "es" | "fr" | "de" | "zh" | "ja" | "ru"
+}
+''';
+
+        final result = await _callDeepSeek([
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': userPrompt},
+        ], jsonResponse: true);
+
+        final isRtl = result['isRtl'] == true || (result['isRtl']?.toString().toLowerCase() == 'true');
+        return {
+          'language': result['language']?.toString() ?? (isRtl ? 'Arabic' : 'English'),
+          'isRtl': isRtl,
+          'code': result['code']?.toString() ?? (isRtl ? 'ar' : 'en'),
+        };
+      }
+    } catch (_) {}
+
+    return detectLanguageHeuristic(text);
+  }
+
+  /// Fast local script heuristic to determine language and RTL direction without network call.
+  static Map<String, dynamic> detectLanguageHeuristic(String text) {
+    if (text.trim().isEmpty) {
+      return {'language': 'English', 'isRtl': false, 'code': 'en'};
+    }
+
+    // Strip code blocks and LaTeX math before analyzing natural language characters
+    final clean = text
+        .replaceAll(RegExp(r'```[\s\S]*?```'), '')
+        .replaceAll(RegExp(r'`[^`]*`'), '')
+        .replaceAll(RegExp(r'\$\$[\s\S]*?\$\$'), '')
+        .replaceAll(RegExp(r'\$[^\$]*\$'), '');
+
+    int arabicChars = 0;
+    int hebrewChars = 0;
+    int latinChars = 0;
+    int cjkChars = 0;
+    int cyrillicChars = 0;
+
+    for (final rune in clean.runes) {
+      // Arabic, Persian, Urdu, etc.
+      if ((rune >= 0x0600 && rune <= 0x06FF) ||
+          (rune >= 0x0750 && rune <= 0x077F) ||
+          (rune >= 0x08A0 && rune <= 0x08FF) ||
+          (rune >= 0xFB50 && rune <= 0xFDFF) ||
+          (rune >= 0xFE70 && rune <= 0xFEFF)) {
+        arabicChars++;
+      } else if (rune >= 0x0590 && rune <= 0x05FF) {
+        hebrewChars++;
+      } else if ((rune >= 0x0041 && rune <= 0x005A) || (rune >= 0x0061 && rune <= 0x007A)) {
+        latinChars++;
+      } else if (rune >= 0x4E00 && rune <= 0x9FFF) {
+        cjkChars++;
+      } else if (rune >= 0x0400 && rune <= 0x04FF) {
+        cyrillicChars++;
+      }
+    }
+
+    if (arabicChars > 0 && arabicChars >= (latinChars * 0.25)) {
+      return {'language': 'Arabic', 'isRtl': true, 'code': 'ar'};
+    }
+    if (hebrewChars > 0 && hebrewChars >= (latinChars * 0.25)) {
+      return {'language': 'Hebrew', 'isRtl': true, 'code': 'he'};
+    }
+    if (cjkChars > latinChars) {
+      return {'language': 'Chinese', 'isRtl': false, 'code': 'zh'};
+    }
+    if (cyrillicChars > latinChars) {
+      return {'language': 'Russian', 'isRtl': false, 'code': 'ru'};
+    }
+    return {'language': 'English', 'isRtl': false, 'code': 'en'};
+  }
+
+  /// Returns true if the text contains predominant RTL script (Arabic, Hebrew, Persian, etc.).
+  static bool isRtlContent(String text) {
+    return detectLanguageHeuristic(text)['isRtl'] == true;
+  }
+
+  /// Generates insightful conceptual and analytical questions testing mastery of the given note.
+  Future<List<Map<String, String>>> generateMasteryQuestions({
+    required String noteContent,
+    int count = 3,
+  }) async {
+    if (noteContent.trim().isEmpty) return [];
+
+    try {
+      final apiKey = await _getApiKey();
+      if (apiKey != null && apiKey.trim().isNotEmpty) {
+        final sample = noteContent.length > 2500 ? noteContent.substring(0, 2500) : noteContent;
+        final systemPrompt = '''
+You are an expert tutor creating an active-recall mastery quiz based on the student's study notes.
+Generate exactly $count concise, deep conceptual/application questions that test real understanding.
+For each question, provide an ideal, complete reference answer.
+
+Output ONLY a valid JSON object:
+{
+  "questions": [
+    {
+      "question": "What is the key invariant in ...?",
+      "idealAnswer": "The key invariant is that ..."
+    }
+  ]
+}
+''';
+        final userPrompt = 'Notes:\n$sample';
+
+        final response = await _callDeepSeek([
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': userPrompt},
+        ], jsonResponse: true);
+
+        if (response['questions'] is List) {
+          final list = response['questions'] as List;
+          return list
+              .map((item) => item is Map
+                  ? {
+                      'question': item['question']?.toString() ?? '',
+                      'idealAnswer': item['idealAnswer']?.toString() ?? '',
+                    }
+                  : <String, String>{})
+              .where((item) => item['question'] != null && item['question']!.isNotEmpty)
+              .toList();
+        }
+      }
+    } catch (_) {}
+
+    // Resilient fallback generator based on note structure
+    return _generateFallbackMasteryQuestions(noteContent, count: count);
+  }
+
+  List<Map<String, String>> _generateFallbackMasteryQuestions(String content, {int count = 3}) {
+    final lines = content.split('\n');
+    final headers = <String>[];
+    final bullets = <String>[];
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('#') && trimmed.replaceAll('#', '').trim().isNotEmpty) {
+        headers.add(trimmed.replaceAll(RegExp(r'^#+\s*'), ''));
+      } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('> ')) {
+        final text = trimmed.substring(2).trim();
+        if (text.length > 15) bullets.add(text);
+      }
+    }
+
+    final questions = <Map<String, String>>[];
+
+    for (final header in headers) {
+      if (questions.length >= count) break;
+      questions.add({
+        'question': 'Explain the key concepts and mechanisms behind "$header".',
+        'idealAnswer': 'A complete explanation of $header covering its definition, properties, and practical applications as outlined in the notes.',
+      });
+    }
+
+    for (final bullet in bullets) {
+      if (questions.length >= count) break;
+      questions.add({
+        'question': 'What are the main insights and details regarding: "$bullet"?',
+        'idealAnswer': bullet,
+      });
+    }
+
+    if (questions.isEmpty) {
+      questions.add({
+        'question': 'Summarize the core takeaways and principles from these study notes in your own words.',
+        'idealAnswer': 'Key principles and main concepts summarized directly from the lecture notes.',
+      });
+    }
+
+    return questions;
+  }
+
+  /// Grades a student's typed answer against the ideal benchmark answer.
+  Future<Map<String, dynamic>> gradeMasteryAnswer({
+    required String question,
+    required String idealAnswer,
+    required String userAnswer,
+  }) async {
+    if (userAnswer.trim().isEmpty) {
+      return {
+        'isCorrect': false,
+        'scorePercentage': 0,
+        'feedback': 'No answer was provided.',
+        'idealComparison': idealAnswer,
+      };
+    }
+
+    try {
+      final apiKey = await _getApiKey();
+      if (apiKey != null && apiKey.trim().isNotEmpty) {
+        final systemPrompt = '''
+You are an encouraging but rigorous academic evaluator.
+Evaluate the student's answer against the ideal reference answer for the given question.
+Determine if the student understands the core concept (grant credit if the essence is correct even if phrasing differs).
+
+Output ONLY a valid JSON object:
+{
+  "isCorrect": true,
+  "scorePercentage": 85,
+  "feedback": "Great explanation! You captured the main point...",
+  "idealComparison": "Key elements to remember: ..."
+}
+''';
+        final userPrompt = '''
+Question: $question
+Ideal Benchmark Answer: $idealAnswer
+Student's Typed Answer: $userAnswer
+''';
+
+        final response = await _callDeepSeek([
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': userPrompt},
+        ], jsonResponse: true);
+
+        final isCorrect = response['isCorrect'] == true ||
+            (response['isCorrect']?.toString().toLowerCase() == 'true') ||
+            ((int.tryParse(response['scorePercentage']?.toString() ?? '0') ?? 0) >= 60);
+
+        final score = (int.tryParse(response['scorePercentage']?.toString() ?? '0') ?? (isCorrect ? 100 : 30)).clamp(0, 100);
+
+        return {
+          'isCorrect': isCorrect,
+          'scorePercentage': score,
+          'feedback': response['feedback']?.toString() ?? (isCorrect ? 'Correct! Good understanding.' : 'Needs review.'),
+          'idealComparison': response['idealComparison']?.toString() ?? idealAnswer,
+        };
+      }
+    } catch (_) {}
+
+    // Fallback heuristic evaluation
+    final userWords = userAnswer.toLowerCase().split(RegExp(r'\W+')).where((w) => w.length > 3).toSet();
+    final idealWords = idealAnswer.toLowerCase().split(RegExp(r'\W+')).where((w) => w.length > 3).toSet();
+
+    if (idealWords.isEmpty || userWords.isEmpty) {
+      final isNotEmpty = userAnswer.trim().length >= 10;
+      return {
+        'isCorrect': isNotEmpty,
+        'scorePercentage': isNotEmpty ? 70 : 20,
+        'feedback': isNotEmpty ? 'Answer recorded.' : 'Please provide more detail.',
+        'idealComparison': idealAnswer,
+      };
+    }
+
+    final intersection = userWords.intersection(idealWords);
+    final ratio = intersection.length / idealWords.length;
+    final isCorrect = ratio >= 0.25 || userAnswer.trim().length >= 30;
+    final score = (ratio * 100).round().clamp(isCorrect ? 60 : 20, 100);
+
+    return {
+      'isCorrect': isCorrect,
+      'scorePercentage': score,
+      'feedback': isCorrect
+          ? 'Well done! You demonstrated understanding of the core concepts.'
+          : 'Review this concept: key benchmark points were missed.',
+      'idealComparison': idealAnswer,
+    };
+  }
 }

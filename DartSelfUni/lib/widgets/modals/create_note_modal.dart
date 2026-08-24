@@ -7,10 +7,7 @@ import '../../providers/deck_provider.dart';
 class CreateNoteModal extends StatefulWidget {
   final String? initialFolderId;
 
-  const CreateNoteModal({
-    super.key,
-    this.initialFolderId,
-  });
+  const CreateNoteModal({super.key, this.initialFolderId});
 
   /// Static helper to display the modal dialog and return a Map of the created note's metadata
   static Future<Map<String, String?>?> show(
@@ -39,9 +36,9 @@ class _CreateNoteModalState extends State<CreateNoteModal> {
   void initState() {
     super.initState();
     _titleController = TextEditingController();
-    
+
     _selectedFolderId = widget.initialFolderId;
-    
+
     String initialTopic = 'General';
     if (_selectedFolderId != null && _selectedFolderId != 'unfiled') {
       final deckProvider = context.read<DeckProvider>();
@@ -66,7 +63,7 @@ class _CreateNoteModalState extends State<CreateNoteModal> {
   Widget build(BuildContext context) {
     final deckProvider = context.watch<DeckProvider>();
     final folders = deckProvider.folders;
-    
+
     // Filter out unfiled folder to display only course/topic folders
     final displayFolders = folders.where((f) => f.id != 'unfiled').toList();
 
@@ -91,7 +88,11 @@ class _CreateNoteModalState extends State<CreateNoteModal> {
                       color: const Color(0xFFECFDF5),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.note_add_outlined, color: Color(0xFF10B981), size: 22),
+                    child: const Icon(
+                      Icons.note_add_outlined,
+                      color: Color(0xFF10B981),
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -120,7 +121,7 @@ class _CreateNoteModalState extends State<CreateNoteModal> {
                 ],
               ),
               const SizedBox(height: 24),
-              
+
               // Note Title
               const Text(
                 'Note Title',
@@ -150,7 +151,10 @@ class _CreateNoteModalState extends State<CreateNoteModal> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(color: Color(0xFF10B981)),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) {
@@ -189,7 +193,10 @@ class _CreateNoteModalState extends State<CreateNoteModal> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(color: Color(0xFF10B981)),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
                 onChanged: (val) {
                   _isTopicManuallyEdited = true;
@@ -214,8 +221,13 @@ class _CreateNoteModalState extends State<CreateNoteModal> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedFolderId == 'unfiled' ? null : _selectedFolderId,
-                style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                initialValue: _selectedFolderId == 'unfiled'
+                    ? null
+                    : _selectedFolderId,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -229,7 +241,10 @@ class _CreateNoteModalState extends State<CreateNoteModal> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(color: Color(0xFF10B981)),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
                 items: [
                   const DropdownMenuItem<String>(
@@ -251,7 +266,10 @@ class _CreateNoteModalState extends State<CreateNoteModal> {
                         _topicController.text = 'General';
                       } else {
                         final folderName = displayFolders
-                            .firstWhere((f) => f.id == val, orElse: () => Folder(id: '', name: 'General'))
+                            .firstWhere(
+                              (f) => f.id == val,
+                              orElse: () => Folder(id: '', name: 'General'),
+                            )
                             .name;
                         _topicController.text = folderName;
                       }
@@ -287,10 +305,18 @@ class _CreateNoteModalState extends State<CreateNoteModal> {
                       backgroundColor: const Color(0xFF10B981),
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    child: const Text('Create Note', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Create Note',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
